@@ -1,0 +1,85 @@
+Build a web platform for hotels to digitally manage and display their menus. This platform will have three main components:
+
+🏨 1. Hotel Owner Dashboard
+Hotel owners should be able to:
+
+Register and securely log in
+
+View their current hotel profile and existing dishes
+
+Submit requests to add new dishes or update existing ones, including name, price, description, and image
+
+These changes will not go live instantly—they will be reviewed and approved by a super admin
+
+If the hotel’s subscription is inactive, access should be blocked with a message: “Your subscription has expired.”
+
+✨ Behind the scenes, this will use a users table to authenticate the hotel owner, link them to their hotel_id, and a menu_update_requests table to capture proposed changes.
+
+🌐 2. Public Menu Page (One per Hotel)
+Each hotel will have a public URL like /hotel/:id, visible via a QR code placed in hotel rooms.
+
+When a guest visits this page:
+
+Show hotel details (name, location, etc.)
+
+Show only dishes that have been approved by the super admin
+
+If the hotel’s subscription has expired, show an error message like “This hotel is currently unavailable.”
+
+✨ This will fetch data from the hotels table for hotel info and from the menu_items table for all is_approved = true dishes.
+
+🔐 3. Super Admin Panel
+The super admin should be able to:
+
+Log in to a private dashboard
+
+View and review all menu_update_requests submitted by hotel owners
+
+Approve or reject each request
+
+Approved requests will either add new items or update existing items in the menu_items table, and mark them as is_approved = true
+
+View and manage a list of all hotels, including the ability to activate or deactivate their subscription
+
+✨ This role will interact with all tables—reviewing data from menu_update_requests, modifying menu_items, and toggling hotels.is_active.
+
+🗃️ Database Schema (Used Across All Sections)
+Please structure the backend as follows (e.g., Supabase):
+
+hotels
+Stores hotel profile and subscription status.
+
+id (UUID), name, description, location, qr_code_url
+
+is_active (Boolean): controls subscription status
+
+users
+Stores hotel owners and super admin.
+
+id, email, password, role (hotel_owner, super_admin)
+
+hotel_id: foreign key to hotels (null for super admin)
+
+menu_items
+Approved dishes that are shown on public menu pages.
+
+id, hotel_id, name, price, description, photo_url
+
+is_approved (Boolean)
+
+menu_update_requests
+Captures new or updated dish requests from hotel owners.
+
+id, hotel_id, item_id (nullable for new dish)
+
+requested_changes (JSON): dish name, price, image, description
+
+status: pending, approved, rejected
+
+🔒 All access must be role-based:
+
+Hotel owners only manage their hotel’s data
+
+Guests can only view approved menus
+
+Super admin manages everything

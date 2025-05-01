@@ -1,0 +1,112 @@
+I want to create a website-based Hotel Menu Management Platform with the following structure and functionality. This platform will manage multiple hotels, each with its own public menu URL (accessible via QR code), and role-based access control for hotel owners and a super admin.
+
+🔹 Section 1: Hotel Owner Dashboard (Private)
+Each hotel owner should be able to:
+
+Register or log in securely (linked to their specific hotel)
+
+View their current approved menu items
+
+Submit menu update requests (for new dishes or edits)
+
+Provide for each dish:
+
+Dish Name, Price, Description, Photo
+
+Category (e.g., Drinks, Curry, Bread)
+
+Meal Type (Breakfast, Lunch, Dinner)
+
+Available Till (time string like 22:00, indicating how long the dish is served)
+
+These changes must be reviewed and approved by the super admin before appearing publicly
+
+If their subscription is expired, they should see a message saying:
+
+“Your subscription has expired. Please renew to access your menu dashboard.”
+
+🔹 Section 2: Public Menu Page (One per Hotel)
+Each hotel has a unique public URL in the format /hotel/:id, where :id is their hotel ID.
+
+This page should:
+
+Display hotel name, description, and menu
+
+Only show menu items that are approved (is_approved = true)
+
+Group items visually by Meal Type and Category
+
+Respect availability time: items not available past the current time should be greyed out or hidden
+
+If a hotel’s subscription is expired (is_active = false), the page should show:
+
+“This hotel’s menu is currently unavailable.”
+
+QR codes (stored in the database) will be placed in hotel rooms, linking directly to these pages
+
+🔹 Section 3: Super Admin Panel
+The super admin should:
+
+Log in securely (different role from hotel owners)
+
+View a list of all menu_update_requests submitted by hotel owners
+
+For each request, see:
+
+Current item (if being updated), and proposed change details
+
+Category, Meal Type, Available Till time
+
+Approve or reject requests
+
+Upon approval, the data gets updated in the main menu
+
+Additionally, view all hotels and toggle their subscription (is_active) manually
+
+🗃️ Database Schema (to power the platform)
+1. hotels
+Stores basic info about each hotel
+
+id (UUID) – primary key
+
+name, description, location
+
+qr_code_url: Link to public menu page
+
+is_active (Boolean): True if subscription is valid
+
+2. users
+Auth table for both hotel owners and super admin
+
+id (UUID)
+
+email, password, role (hotel_owner, super_admin)
+
+hotel_id (nullable, only required for hotel_owner)
+
+3. menu_items
+Approved dishes shown publicly
+
+id, hotel_id (FK to hotels)
+
+name, price, description, photo_url
+
+category (e.g., Drinks, Curry, Bread)
+
+meal_type (e.g., Breakfast, Lunch, Dinner)
+
+available_till (e.g., '22:00')
+
+is_approved (Boolean): Only true items show on public page
+
+4. menu_update_requests
+Tracks all dish change requests
+
+id, hotel_id, item_id (nullable for new dishes)
+
+requested_changes: JSON with new or updated values (includes category, meal_type, available_till)
+
+status: pending, approved, rejected
+
+submitted_at (timestamp)
+
