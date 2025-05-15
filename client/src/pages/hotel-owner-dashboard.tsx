@@ -36,28 +36,28 @@ export default function HotelOwnerDashboard() {
 
   const endDate = hotel?.subscription_end_date;
 
-const daysLeft = endDate ? differenceInCalendarDays(endDate, new Date()) : null;
+  const daysLeft = endDate ? differenceInCalendarDays(endDate, new Date()) : null;
 
-const duration =
-  endDate && daysLeft !== null && daysLeft >= 0
-    ? intervalToDuration({ start: new Date(), end: endDate })
-    : null;
+  const duration =
+    endDate && daysLeft !== null && daysLeft >= 0
+      ? intervalToDuration({ start: new Date(), end: endDate })
+      : null;
 
-const statusColor =
-  daysLeft !== null && daysLeft < 10
-    ? "bg-orange-100 text-orange-800"
-    : "bg-green-100 text-green-800";
+  const statusColor =
+    daysLeft !== null && daysLeft < 10
+      ? "bg-orange-100 text-orange-800"
+      : "bg-green-100 text-green-800";
 
-const formatDuration = (duration: Duration) => {
-  const parts = [];
-  if (duration.years) parts.push(`${duration.years} year${duration.years > 1 ? "s" : ""}`);
-  if (duration.months) parts.push(`${duration.months} month${duration.months > 1 ? "s" : ""}`);
-  if (duration.days) parts.push(`${duration.days} day${duration.days > 1 ? "s" : ""}`);
-  return parts.join(", ");
-};
+  const formatDuration = (duration: Duration) => {
+    const parts = [];
+    if (duration.years) parts.push(`${duration.years} year${duration.years > 1 ? "s" : ""}`);
+    if (duration.months) parts.push(`${duration.months} month${duration.months > 1 ? "s" : ""}`);
+    if (duration.days) parts.push(`${duration.days} day${duration.days > 1 ? "s" : ""}`);
+    return parts.join(", ");
+  };
 
-const remainingText = duration ? `${formatDuration(duration)} left` : "Unknown";
-const endDateFormatted = endDate ? format(endDate, "MMMM d, yyyy") : "N/A";
+  const remainingText = duration ? `${formatDuration(duration)} left` : "Unknown";
+  const endDateFormatted = endDate ? format(endDate, "MMMM d, yyyy") : "N/A";
 
   const { data: activeSubscription, isLoading: isLoadingSubscription, refetch: refetchSubscription } = useQuery<{ subscription: Subscription | null }>({
     queryKey: [hotelId ? `/api/subscription/active/${hotelId}` : null],
@@ -175,16 +175,16 @@ const endDateFormatted = endDate ? format(endDate, "MMMM d, yyyy") : "N/A";
                   </div>
                 </div>
                 <div className="rounded-xl border p-5 shadow-sm bg-white">
-  <p className="text-sm font-semibold text-gray-600 mb-2">Subscription Status</p>
-  <div className="flex items-center justify-between">
-    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${statusColor}`}>
-      Active — {remainingText}
-    </span>
-    <span className="text-xs text-gray-500">
-    Ends on {endDateFormatted}
-    </span>
-  </div>
-</div>
+                  <p className="text-sm font-semibold text-gray-600 mb-2">Subscription Status</p>
+                  <div className="flex items-center justify-between">
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${statusColor}`}>
+                      Active — {remainingText}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      Ends on {endDateFormatted}
+                    </span>
+                  </div>
+                </div>
 
                 <div className="p-6 space-y-4">
                   {/* Button that triggers the modal */}
