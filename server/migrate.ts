@@ -20,6 +20,22 @@ async function main() {
   
   // Create schema
   try {
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS subscriptions (
+        id TEXT PRIMARY KEY,
+        hotel_owner_id UUID NOT NULL REFERENCES hotels(id),
+        plan_type TEXT NOT NULL,
+        start_date TEXT NOT NULL,
+        end_date TEXT NOT NULL,
+        razorpay_order_id TEXT NOT NULL,
+        payment_status TEXT NOT NULL,
+        amount TEXT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+      );
+    `);
+    console.log("Created subscription table");
+
     // Create hotels table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS hotels (
@@ -30,7 +46,8 @@ async function main() {
         qr_code_url TEXT NOT NULL,
         is_active BOOLEAN NOT NULL DEFAULT true,
         contact JSONB DEFAULT '{}'::jsonb,
-        service JSONB DEFAULT '{}'::jsonb
+        service JSONB DEFAULT '{}'::jsonb,
+        subscription_end_date TIMESTAMP NOT NULL DEFAULT NOW()
       );
     `);
     console.log("Created hotels table");
@@ -76,7 +93,6 @@ async function main() {
       );
     `);
     console.log("Created menu_update_requests table");
-    
     console.log("Migration completed successfully");
   } catch (error) {
     console.error("Migration failed:", error);

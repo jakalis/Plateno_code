@@ -57,18 +57,27 @@ export default function ServicePage() {
 
     {service && (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-        {Object.entries(service).map(([key, value]) => (
-          <div
-            key={key}
-            className="bg-white bg-opacity-90 backdrop-blur-md shadow-lg rounded-2xl p-6 border border-gray-100 hover:shadow-xl transition duration-300 ease-in-out"
-          >
-            <h3 className="text-xl font-semibold text-gray-800 capitalize mb-3 tracking-tight">
-              {key.replace(/_/g, ' ')}
-            </h3>
-            <p className="text-base text-gray-600 leading-relaxed">{value}</p>
-          </div>
-        ))}
-      </div>
+  {Object.entries(service).map(([key, value]) => (
+    <div
+      key={key}
+      className="relative bg-white bg-opacity-90 backdrop-blur-md shadow-lg rounded-2xl p-6 border border-gray-100 hover:shadow-xl transition duration-300 ease-in-out"
+    >
+      {/* Decorative lines like in original div */}
+      <div className="absolute top-0 left-0 w-full h-px bg-gray-300" />
+      <div className="absolute top-2 left-0 w-full h-px bg-gray-200" />
+      <div className="absolute top-0 left-0 h-full w-px bg-gray-200" />
+      <div className="absolute top-0 right-0 h-full w-px bg-gray-100" />
+
+      {/* Title */}
+      <h3 className="text-xl font-semibold text-gray-800 capitalize mb-3 tracking-tight text-center">
+        {key.replace(/_/g, ' ')}
+      </h3>
+
+      {/* Description */}
+      <p className="text-base text-gray-600 leading-relaxed">{value}</p>
+    </div>
+  ))}
+</div>
     )}
 
     {!service && !loading && !error && (

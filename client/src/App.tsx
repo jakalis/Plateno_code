@@ -10,6 +10,8 @@ import PublicMenuPage from "@/pages/public-menu-page";
 import { AuthProvider } from "@/hooks/use-auth";
 import ContactPage from "@/pages/contact-page";
 import ServicePage from "@/pages/service-page";
+import Payment from "./pages/payment";
+import PaymentSuccess from "./pages/payment-success";
 
 function Router() {
   return (
@@ -18,6 +20,8 @@ function Router() {
       <Route path="/menu/:hotelId" component={PublicMenuPage} />
       <Route path="/contact/:hotelId" component={ContactPage} />
       <Route path="/service/:hotelId" component={ServicePage} />
+      <Route path="/pay" component={Payment} />
+      <Route path="/payment-success" component={PaymentSuccess} />
       <ProtectedRoute path="/admin" role="super_admin" component={SuperAdminDashboard} />
       <ProtectedRoute exact path="/" role="hotel_owner" component={HotelOwnerDashboard} />
       <Route component={NotFound} />

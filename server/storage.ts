@@ -11,12 +11,17 @@ import {
   users,
   menuItems,
   menuUpdateRequests,
+  subscriptions, 
+  type Subscription,
+  type InsertSubscription
 } from "@shared/schema";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, lt, asc, desc, sql, isNull, gte } from "drizzle-orm";
 import { db, pool } from "./db";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { hashPassword } from "./auth";
+import { format } from "date-fns";
+import { PgColumn } from "drizzle-orm/pg-core";
 
 export interface IStorage {
   // Hotel Methods
@@ -27,6 +32,12 @@ export interface IStorage {
   deleteHotel(id: string): Promise<boolean>;
   getHotelContact(id: string): Promise<JSON | null>;
   getHotelService(id: string): Promise<JSON | null>;
+
+  updateHotelOwnerStatus(
+    id: string,
+    isActive: boolean,
+    subscription_updated_date: Date
+  ): Promise<Hotel | undefined> ;
 
   // User Methods
   getUsers(): Promise<User[]>;
@@ -56,12 +67,22 @@ export interface IStorage {
     request: Partial<MenuUpdateRequest>,
   ): Promise<MenuUpdateRequest | undefined>;
 
+  // Subscriptions
+  getSubscription(id: string): Promise<Subscription | undefined>;
+  getActiveSubscription(hotelOwnerId: string): Promise<Subscription | undefined>;
+  getAllSubscriptionsByHotelOwner(hotelOwnerId: string): Promise<Subscription[]>;
+  createSubscription(subscription: InsertSubscription): Promise<Subscription>;
+  updateSubscriptionStatus(orderId: string, status: string): Promise<Subscription | undefined>;
+  getExpiredSubscriptions(): Promise<{hotelOwnerId: string}[]>;
+  getSubscriptionByOrderId(orderId: string): Promise<Subscription | undefined>;
+  getSubscriptionEndDate(hotelId: string): Promise<Date | null>;
+
   // Session Store
-  sessionStore: session.SessionStore;
+  sessionStore: session.Store;
 }
 
 export class DatabaseStorage implements IStorage {
-  sessionStore: session.SessionStore;
+  sessionStore: session.Store;
 
   constructor() {
     const PostgresStore = connectPg(session);
@@ -72,6 +93,88 @@ export class DatabaseStorage implements IStorage {
 
     // Create the super admin user (only if it doesn't exist)
     this.initSuperAdmin();
+  }
+  async getSubscription(id: string): Promise<Subscription | undefined> {
+    const [subscription] = await db.select().from(subscriptions).where(eq(subscriptions.id, id));
+    return subscription;
+  }
+  async getActiveSubscription(hotelOwnerId: string): Promise<Subscription | undefined> {
+    const today = format(new Date(), 'yyyy-MM-dd');
+    
+    const [subscription] = await db
+      .select()
+      .from(subscriptions)
+      .where(
+        and(
+          eq(subscriptions.hotel_owner_id, hotelOwnerId),
+          eq(subscriptions.payment_status, "paid"),
+          gte(subscriptions.end_date, today)
+        )
+      )
+      .orderBy(subscriptions.end_date);
+    
+    return subscription;
+  }
+  async getAllSubscriptionsByHotelOwner(hotelOwnerId: string): Promise<Subscription[]> {
+    return await db
+    .select()
+    .from(subscriptions)
+    .where(eq(subscriptions.hotel_owner_id, hotelOwnerId))
+    .orderBy(desc(subscriptions.created_at));
+  }
+  async createSubscription(subscription: InsertSubscription): Promise<Subscription> {
+    const [newSubscription] = await db
+    .insert(subscriptions)
+    .values(subscription)
+    .returning();
+  
+  return newSubscription;
+  }
+  async updateSubscriptionStatus(orderId: string, status: string): Promise<Subscription | undefined> {
+        // Ensure status is a valid payment_status type
+        if (status !== "pending" && status !== "paid" && status !== "failed") {
+          console.error(`Invalid payment status: ${status}`);
+          return undefined;
+        }
+        
+        const [updatedSubscription] = await db
+          .update(subscriptions)
+          .set({ payment_status: status as "pending" | "paid" | "failed" })
+          .where(eq(subscriptions.razorpay_order_id, orderId))
+          .returning();
+        
+        return updatedSubscription;
+  }
+
+  async getExpiredSubscriptions(): Promise<{ hotelOwnerId: string }[]> {
+    const today = new Date();
+  
+    // Get all hotels whose subscription has expired
+    const expiredSubscriptions = await db
+      .select({ id: hotels.id }) // only select the required field
+      .from(hotels)
+      .where(lt(hotels.subscription_end_date, today));
+  
+    return expiredSubscriptions.map((hotel) => ({
+      hotelOwnerId: hotel.id,
+    }));
+  }
+
+
+  async getSubscriptionByOrderId(orderId: string): Promise<Subscription | undefined> {
+        console.log("Looking for subscription with order ID:", orderId);
+    const [subscription] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.razorpay_order_id, orderId));
+      
+    if (subscription) {
+      console.log("Found subscription:", subscription.id);
+    } else {
+      console.log("No subscription found with order ID:", orderId);
+    }
+    
+    return subscription;
   }
 
   private async initSuperAdmin() {
@@ -294,6 +397,39 @@ export class DatabaseStorage implements IStorage {
 
     return updatedRequest;
   }
+
+  async updateHotelOwnerStatus(
+    id: string,
+    isActive: boolean,
+    subscription_updated_date: Date
+  ): Promise<Hotel | undefined> {
+  
+    const [updatedOwner] = await db
+      .update(hotels)
+      .set({
+        is_active: isActive,
+        subscription_end_date: subscription_updated_date,
+      })
+      .where(eq(hotels.id, id))
+      .returning();
+  
+    return updatedOwner;
+  }
+
+  async getSubscriptionEndDate(hotelId: string): Promise<Date | null> {
+    const result = await db
+      .select({ subscriptionEndDate: hotels.subscription_end_date })
+      .from(hotels)
+      .where(eq(hotels.id, hotelId))
+      .limit(1);
+  
+    if (result.length === 0) {
+      return null; // hotel not found
+    }
+  
+    return result[0].subscriptionEndDate;
+  }
 }
 
 export const storage = new DatabaseStorage();
+

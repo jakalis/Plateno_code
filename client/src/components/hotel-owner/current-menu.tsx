@@ -115,40 +115,37 @@ export default function CurrentMenu({ hotelId }: CurrentMenuProps) {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-medium text-gray-900">
-          Current Menu Items
-        </h3>
-        <div className="flex space-x-4">
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="All Categories" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all_categories">All Categories</SelectItem>
-              {categories.map((category) => (
-                <SelectItem key={category} value={category}>
-                  {category}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+<div className="flex flex-nowrap gap-2 items-center mb-4 overflow-x-auto">
+  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+    <SelectTrigger className="w-[140px] h-8 px-2 text-xs rounded-md border border-gray-300 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition">
+      <SelectValue placeholder="Category" />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="all_categories">All Categories</SelectItem>
+      {categories.map((category) => (
+        <SelectItem key={category} value={category}>
+          {category}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
 
-          <Select value={mealTypeFilter} onValueChange={setMealTypeFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="All Meal Types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all_meal_types">All Meal Types</SelectItem>
-              {mealTypes.map((type) => (
-                <SelectItem key={type} value={type}>
-                  {type}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+  <Select value={mealTypeFilter} onValueChange={setMealTypeFilter}>
+    <SelectTrigger className="w-[140px] h-8 px-2 text-xs rounded-md border border-gray-300 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition">
+      <SelectValue placeholder="Meal Type" />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="all_meal_types">All Meal Types</SelectItem>
+      {mealTypes.map((type) => (
+        <SelectItem key={type} value={type}>
+          {type}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+</div>
+
+
 
       <div className="bg-white shadow-sm rounded-lg overflow-hidden">
         {filteredItems.length === 0 ? (

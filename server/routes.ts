@@ -2,9 +2,14 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
-import { z } from "zod";
-import { menuUpdateRequests } from "@shared/schema";
+import { z, ZodError } from "zod";
+import { fromZodError } from "zod-validation-error";
+import { hotels, menuUpdateRequests, paymentSchema } from "@shared/schema";
 import { addAllMenuItemsRoute, addHotelContactRoute, addHotelServiceRoute } from "./api-routes";
+import { createOrder, verifyPaymentSignature } from "./razorpay";
+import { addDays, format } from "date-fns";
+import { setupCronJob, updateSubscriptionStatuses } from "./cron";
+import { v4 as uuidv4 } from 'uuid';
 
 // Middleware to check if user is authenticated
 const isAuthenticated = (req: Request, res: Response, next: Function) => {
@@ -52,6 +57,9 @@ const isHotelActive = async (req: Request, res: Response, next: Function) => {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
+
+  const httpServer = createServer(app);
+  
   // Setup authentication
   setupAuth(app);
 
@@ -61,6 +69,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   addHotelContactRoute(app); 
 
   addHotelServiceRoute(app);
+
+    // Set up cron job to check and update subscription statuses
+    setupCronJob(httpServer);
 
   // API Routes
   // Hotel Routes
@@ -383,8 +394,236 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+    // Get active subscription for a hotel owner
+    app.get("/api/subscription/active/:hotelOwnerId", async (req: Request, res: Response) => {
+      try {
+        const { hotelOwnerId } = req.params;
+        const subscription = await storage.getActiveSubscription(hotelOwnerId);
+        
+        res.json({ subscription });
+      } catch (error) {
+        console.error("Error fetching active subscription:", error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+  
+    // Get all subscriptions for a hotel owner
+    app.get("/api/subscriptions/:hotelOwnerId", async (req: Request, res: Response) => {
+      try {
+        const { hotelOwnerId } = req.params;
+        const subscriptions = await storage.getAllSubscriptionsByHotelOwner(hotelOwnerId);
+        
+        res.json(subscriptions);
+      } catch (error) {
+        console.error("Error fetching subscriptions:", error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+  
+    // Create a payment order
+    app.post("/api/create-payment", async (req: Request, res: Response) => {
+      try {
+        const { type, hotelOwnerId } = paymentSchema.parse(req.body);
+        const subscriptionId = uuidv4();
+        
+        // Check if hotel owner exists
+        const hotelOwner = await storage.getHotel(hotelOwnerId);
+        if (!hotelOwner) {
+          return res.status(404).json({ message: "Hotel owner not found" });
+        }
+        
+        // Set amount based on plan type (in paise)
+        const amount = type === "monthly" ? 10000 : 100000; // ₹100 or ₹1000
+        const receipt = `receipt_${Date.now()}`;
+        
+        // Create order in Razorpay
+        const order = await createOrder({
+          amount,
+          currency: "INR",
+          receipt,
+          notes: {
+            hotelOwnerId,
+            planType: type
+          }
+        });
+        
+        // Create subscription record with pending status
+        const subscription_date = await storage.getSubscriptionEndDate(hotelOwnerId);
+
+        const now = new Date();
+        let startDate: Date;
+        
+        // If a previous subscription exists and is in the future, use that as the start
+        if (subscription_date && subscription_date > now) {
+          startDate = subscription_date;
+        } else {
+          startDate = now;
+        }
+
+
+
+        const endDate = type === "monthly" 
+          ? addDays(startDate, 30) 
+          : addDays(startDate, 365);
+        
+        const subscription = await storage.createSubscription({
+          id: subscriptionId,
+          hotel_owner_id: hotelOwnerId,
+          plan_type: type,
+          start_date: format(startDate, 'yyyy-MM-dd'),
+          end_date: format(endDate, 'yyyy-MM-dd'),
+          razorpay_order_id: order.id,
+          payment_status: "pending",
+          amount: type === "monthly" ? "₹100" : "₹1000"
+        });
+        
+        // Ensure amount is a number for proper JSON serialization and client parsing
+        const responseAmount = typeof order.amount === 'string' ? parseInt(order.amount, 10) : order.amount;
+        
+        console.log("Sending payment response with amount:", responseAmount);
+        
+        res.json({
+          orderId: order.id,
+          amount: responseAmount,
+          currency: order.currency,
+          subscriptionId: subscription.id
+        });
+      } catch (error) {
+        if (error instanceof ZodError) {
+          const validationError = fromZodError(error);
+          return res.status(400).json({ message: validationError.message });
+        }
+        
+        console.error("Error creating payment:", error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+  
+    // Verify payment
+    app.post("/api/verify-payment", async (req: Request, res: Response) => {
+      try {
+        const { razorpay_order_id, razorpay_payment_id, razorpay_signature, hotelOwnerId } = req.body;
+        
+        console.log("===== PAYMENT VERIFICATION REQUEST =====");
+        console.log("Payment details:", {
+          order_id: razorpay_order_id,
+          payment_id: razorpay_payment_id,
+          hotel_owner_id: hotelOwnerId,
+          has_signature: razorpay_signature ? 'yes' : 'no'
+        });
+        
+        if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+          console.error("Missing required payment parameters");
+          return res.status(400).json({ 
+            success: false,
+            message: "Missing required payment information" 
+          });
+        }
+        
+        // First check if the subscription exists
+        const existingSubscription = await storage.getSubscriptionByOrderId(razorpay_order_id);
+        if (!existingSubscription) {
+          console.error(`No subscription found with order ID: ${razorpay_order_id}`);
+          return res.status(404).json({ 
+            success: false,
+            message: "Subscription not found" 
+          });
+        }
+        
+        console.log("Found subscription:", existingSubscription);
+        
+        let ownerIdToUse = hotelOwnerId;
+        
+        // If hotelOwnerId is missing in request, try to get it from the subscription
+        if (!ownerIdToUse) {
+          console.log("Hotel owner ID missing in request, using one from subscription");
+          ownerIdToUse = existingSubscription.hotel_owner_id;
+          console.log("Using hotel owner ID from subscription:", ownerIdToUse);
+        }
+        
+        // Verify the payment signature
+        const isSignatureValid = verifyPaymentSignature(
+          razorpay_order_id,
+          razorpay_payment_id,
+          razorpay_signature
+        );
+        
+        if (!isSignatureValid) {
+          console.error("Payment signature verification failed");
+          return res.status(400).json({ 
+            success: false,
+            message: "Invalid payment signature" 
+          });
+        }
+        
+        console.log("Payment signature verified successfully");
+        
+        // Update subscription status
+        console.log(`Updating subscription status to paid for order ID: ${razorpay_order_id}`);
+
+        const updatedSubscription = await storage.updateSubscriptionStatus(razorpay_order_id, "paid");
+        
+        if (!updatedSubscription) {
+
+          console.error("Failed to update subscription status");
+          return res.status(500).json({ 
+            success: false,
+            message: "Failed to update subscription status" 
+          });
+        }
+        
+        console.log("Successfully updated subscription:", updatedSubscription);
+
+        const subscription_updated_date = updatedSubscription.end_date
+
+        console.log("subscription_updated_date:", subscription_updated_date)
+
+        const dateObj = new Date(subscription_updated_date!);
+
+        console.log("subscription_updated_date:", dateObj)
+        
+        // Update hotel owner status to active
+        if (ownerIdToUse) {
+          console.log(`Updating hotel owner (${ownerIdToUse}) status to active`);
+          const updatedOwner = await storage.updateHotelOwnerStatus(ownerIdToUse, true, dateObj);
+          console.log("Hotel owner update result:", updatedOwner);
+        } else {
+          console.error("Cannot update hotel owner status - missing ID");
+        }
+
+
+      console.log("Payment verification process completed successfully");
+        
+        res.json({
+          success: true,
+          message: "Payment verified successfully",
+          subscription: updatedSubscription
+        });
+      } catch (error) {
+        console.error("Error verifying payment:", error);
+        res.status(500).json({ 
+          success: false,
+          message: "Internal server error",
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    });
+  
+    // Manual cron job trigger (for testing)
+    app.get("/api/cron", async (req: Request, res: Response) => {
+      try {
+        await updateSubscriptionStatuses();
+        res.json({ message: "Subscription statuses updated successfully" });
+      } catch (error) {
+        console.error("Error running cron job:", error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+
+
+  //  Subscription routes
+  
   // API routes defined above...
 
-  const httpServer = createServer(app);
   return httpServer;
 }

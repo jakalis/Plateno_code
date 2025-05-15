@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import logo from "@/assets/logo.png"; 
+import logo from "@/assets/logo_icon.svg"; 
 
 export default function PublicLayout({
   children,

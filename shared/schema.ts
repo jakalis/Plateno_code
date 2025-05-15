@@ -1,5 +1,6 @@
-import { pgTable, text, serial, integer, boolean, uuid, timestamp, json, jsonb } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import { relations } from "drizzle-orm";
+import { pgTable, text, serial, integer, boolean, uuid, timestamp, json, jsonb, date, varchar } from "drizzle-orm/pg-core";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Hotels Table
@@ -12,6 +13,7 @@ export const hotels = pgTable("hotels", {
   is_active: boolean("is_active").notNull().default(true),
   contact: jsonb("contact").default({}), // <-- added this line
   service: jsonb("service").default({}), // <-- added this line
+  subscription_end_date: timestamp("subscription_end_date").defaultNow().notNull(),
 });
 
 // Users Table
@@ -53,6 +55,37 @@ export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export const insertMenuItemSchema = createInsertSchema(menuItems).omit({ id: true });
 export const insertMenuUpdateRequestSchema = createInsertSchema(menuUpdateRequests).omit({ id: true, submitted_at: true });
 
+
+export const hotelOwnersRelations = relations(hotels, ({ many }) => ({
+  subscriptions: many(subscriptions),
+}));
+
+// Subscription
+export const subscriptions = pgTable("subscriptions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  hotel_owner_id: uuid("hotel_owner_id").notNull().references(() => hotels.id),
+  plan_type: text("plan_type", { enum: ["monthly", "yearly"] }).notNull(),
+  start_date: date("start_date").notNull(),
+  end_date: date("end_date").notNull(),
+  razorpay_order_id: varchar("razorpay_order_id", { length: 255 }).notNull(),
+  payment_status: text("payment_status", { enum: ["pending", "paid", "failed"] }).notNull().default("pending"),
+  amount: text("amount").notNull(),
+  created_at: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
+  hotelOwner: one(hotels, {
+    fields: [subscriptions.hotel_owner_id],
+    references: [hotels.id],
+  }),
+}));
+
+export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({ 
+  // id: true, 
+  created_at: true 
+});
+export const selectSubscriptionSchema = createSelectSchema(subscriptions);
+
 // Auth Schemas
 export const loginSchema = z.object({
   email: z.string().email(),
@@ -73,3 +106,14 @@ export type MenuUpdateRequest = typeof menuUpdateRequests.$inferSelect;
 export type InsertMenuUpdateRequest = z.infer<typeof insertMenuUpdateRequestSchema>;
 
 export type LoginCredentials = z.infer<typeof loginSchema>;
+
+export type Subscription = typeof subscriptions.$inferSelect;
+export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
+
+// Payment types
+export const paymentSchema = z.object({
+  type: z.enum(["monthly", "yearly"]),
+  hotelOwnerId: z.string().uuid(),
+});
+
+export type PaymentData = z.infer<typeof paymentSchema>;

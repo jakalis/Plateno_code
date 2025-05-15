@@ -133,7 +133,7 @@ export default function AuthPage() {
 
         <Card>
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center">Hotel Menu Manager</CardTitle>
+            <CardTitle className="text-2xl font-bold text-center">Plateno</CardTitle>
             <CardDescription className="text-center">
               Sign in or register to manage your hotel's digital menu
             </CardDescription>

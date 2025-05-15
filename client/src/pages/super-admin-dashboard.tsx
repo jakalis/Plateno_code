@@ -19,7 +19,7 @@ export default function SuperAdminDashboard() {
   return (
     <div className="min-h-screen bg-slate-50">
       <PageHeader 
-        title="Hotel Menu Manager - Admin" 
+        title="Plateno - Admin" 
         userEmail={user.email} 
         onLogout={() => logoutMutation.mutate()} 
       />
