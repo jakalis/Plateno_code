@@ -1,9 +1,16 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { MenuItem } from "@shared/schema";
-import { Button } from "@/components/ui/button";
-import { Pencil, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -11,244 +18,326 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import EditMenuItem from "./utils-menu-item"; // Adjust the path if needed
 
 interface CurrentMenuProps {
   hotelId: string;
 }
 
-export default function CurrentMenu({ hotelId }: CurrentMenuProps) {
-  const [categoryFilter, setCategoryFilter] = useState<string>("");
-  const [mealTypeFilter, setMealTypeFilter] = useState<string>("");
-  const [activeItem, setActiveItem] = useState<MenuItem | null>(null); // Added state for active item
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const { toast } = useToast();
+const ITEMS_PER_PAGE = 10;
 
-  // Fetch menu items
+export default function CurrentMenu({ hotelId }: CurrentMenuProps) {
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [mealTypeFilter, setMealTypeFilter] = useState("");
+  const [activeItem, setActiveItem] = useState<MenuItem | null>(null);
+  const [formValues, setFormValues] = useState<any>(null);
+  const [page, setPage] = useState(1);
+  const [visibleItems, setVisibleItems] = useState<MenuItem[]>([]);
+  const { toast } = useToast();
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
   const {
     data: menuItems,
     isLoading,
     error,
-    refetch, // Destructure refetch from the query
+    refetch,
   } = useQuery<MenuItem[]>({
     queryKey: [`/api/hotels/${hotelId}/menu-items`],
   });
 
-  if (isLoading) {
-    return <div className="text-center py-10">Loading menu items...</div>;
-  }
+  useEffect(() => {
+    if (!menuItems) return;
+    const approved = menuItems.filter((item) => item.is_approved);
+    const filtered = approved.filter((item) => {
+      return (
+        (categoryFilter === "" ||
+          categoryFilter === "all_categories" ||
+          item.category === categoryFilter) &&
+        (mealTypeFilter === "" ||
+          mealTypeFilter === "all_meal_types" ||
+          item.meal_type === mealTypeFilter)
+      );
+    });
 
-  if (error) {
-    return (
-      <div className="text-center py-10 text-red-500">
-        Error loading menu items
-      </div>
+    const slice = filtered.slice(0, page * ITEMS_PER_PAGE);
+    setVisibleItems(slice);
+  }, [menuItems, categoryFilter, mealTypeFilter, page]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry.isIntersecting) {
+          setPage((prev) => prev + 1);
+        }
+      },
+      { threshold: 1 }
     );
-  }
 
-  const approvedItems = menuItems?.filter((item) => item.is_approved) || [];
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current);
+    }
 
-  // Get unique categories and meal types for filters
+    return () => {
+      if (loadMoreRef.current) {
+        observer.unobserve(loadMoreRef.current);
+      }
+    };
+  }, [loadMoreRef.current]);
+
   const categories = Array.from(
-    new Set(approvedItems.map((item) => item.category)),
+    new Set(menuItems?.map((item) => item.category) ?? [])
   );
   const mealTypes = Array.from(
-    new Set(approvedItems.map((item) => item.meal_type)),
+    new Set(menuItems?.map((item) => item.meal_type) ?? [])
   );
 
-  // Apply filters
-  const filteredItems = approvedItems.filter((item) => {
-    if (
-      categoryFilter &&
-      categoryFilter !== "all_categories" &&
-      item.category !== categoryFilter
-    )
-      return false;
-    if (
-      mealTypeFilter &&
-      mealTypeFilter !== "all_meal_types" &&
-      item.meal_type !== mealTypeFilter
-    )
-      return false;
-    return true;
-  });
+  const handleEditClick = (item: MenuItem) => {
+    setActiveItem(item);
+    setFormValues({
+      name: item.name,
+      price: String(item.price),
+      category: item.category,
+      meal_type: item.meal_type,
+      available_till: item.available_till,
+      description: item.description,
+      photo_url: item.photo_url || "",
+    });
+  };
 
-  const handleDelete = async (itemId: string) => {
-    if (!confirm("Are you sure you want to delete this item?")) return;
-
-    try {
-      const res = await fetch(`/api/menu-items/${itemId}`, {
-        method: "DELETE",
+  const handleUpdate = async () => {
+    if (!activeItem) return;
+  
+    const res = await fetch("/api/menu-update-requests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        item_id: activeItem.id,
+        requested_changes: {
+          ...formValues,
+          price: parseFloat(formValues.price),
+        },
+      }),
+    });
+  
+    if (res.ok) {
+      toast({
+        title: "Submitted for Review",
+        description: "Your changes have been sent to the admin for approval.",
       });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        // Show success toast
-        toast({
-          title: "Success",
-          description: "Menu item deleted successfully",
-          variant: "success",
-          duration: 1000,
-        });
-
-        // Trigger refetch to reload the data
-        refetch(); // This will trigger the query to fetch the updated list of items
-      } else {
-        // Show error toast
-        toast({
-          title: "Error",
-          description: data.message || "Something went wrong",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      // Show error toast in case of network or other errors
+      setActiveItem(null);
+      await refetch();
+    } else {
       toast({
         title: "Error",
-        description: "Something went wrong",
-        variant: "destructive",
+        description: "Failed to submit update for review.",
       });
+    }
+  };
+  
+  
+
+  const handleDelete = async () => {
+    if (!activeItem) return;
+
+    const confirmDelete = confirm("Are you sure you want to delete this item?");
+    if (!confirmDelete) return;
+
+    const res = await fetch(`/api/menu-items/${activeItem.id}`, {
+      method: "DELETE",
+    });
+
+    if (res.ok) {
+      toast({ title: "Deleted", description: "Item deleted successfully." });
+      setActiveItem(null);
+      await refetch();
+    } else {
+      toast({ title: "Error", description: "Failed to delete item." });
     }
   };
 
   return (
-    <div>
-<div className="flex flex-nowrap gap-2 items-center mb-4 overflow-x-auto">
-  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-    <SelectTrigger className="w-[140px] h-8 px-2 text-xs rounded-md border border-gray-300 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition">
-      <SelectValue placeholder="Category" />
-    </SelectTrigger>
-    <SelectContent>
-      <SelectItem value="all_categories">All Categories</SelectItem>
-      {categories.map((category) => (
-        <SelectItem key={category} value={category}>
-          {category}
-        </SelectItem>
-      ))}
-    </SelectContent>
-  </Select>
-
-  <Select value={mealTypeFilter} onValueChange={setMealTypeFilter}>
-    <SelectTrigger className="w-[140px] h-8 px-2 text-xs rounded-md border border-gray-300 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition">
-      <SelectValue placeholder="Meal Type" />
-    </SelectTrigger>
-    <SelectContent>
-      <SelectItem value="all_meal_types">All Meal Types</SelectItem>
-      {mealTypes.map((type) => (
-        <SelectItem key={type} value={type}>
-          {type}
-        </SelectItem>
-      ))}
-    </SelectContent>
-  </Select>
-</div>
-
-
-
-      <div className="bg-white shadow-sm rounded-lg overflow-hidden">
-        {filteredItems.length === 0 ? (
-          <div className="p-10 text-center text-gray-500">
-            No menu items available. Add new items from the "Add New Item" tab.
-          </div>
-        ) : (
-          <ul role="list" className="divide-y divide-gray-200">
-            {filteredItems.map((item) => (
-              <li
-                key={item.id}
-                className="p-4 flex items-start justify-between hover:bg-gray-50"
-              >
-                <div className="flex items-start">
-                  <div className="flex-shrink-0 h-16 w-16 rounded-md overflow-hidden bg-gray-200 flex items-center justify-center">
-                    {item.photo_url ? (
-                      <img
-                        src={item.photo_url}
-                        alt={item.name}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-gray-400 text-xs">No Image</span>
-                    )}
-                  </div>
-                  <div className="ml-4">
-                    <div className="flex items-center">
-                      <h4 className="text-md font-medium text-gray-900">
-                        {item.name}
-                      </h4>
-                      <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        Approved
-                      </span>
-                    </div>
-                    <p className="mt-1 text-sm text-gray-500 line-clamp-2">
-                      {item.description}
-                    </p>
-                    <div className="mt-1 flex items-center flex-wrap">
-                      <span className="text-sm font-medium text-gray-700">
-                        ₹{item.price}
-                      </span>
-                      <span className="mx-2 text-gray-300">|</span>
-                      <span className="text-xs text-gray-500">
-                        {item.category}
-                      </span>
-                      <span className="mx-2 text-gray-300">|</span>
-                      <span className="text-xs text-gray-500">
-                        {item.meal_type}
-                      </span>
-                      <span className="mx-2 text-gray-300">|</span>
-                      <span className="text-xs text-gray-500">
-                        Available till {item.available_till}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    className="h-8 w-8 rounded-full"
-                    onClick={() => {
-                      setActiveItem(item);
-                      setDialogOpen(true);
-                    }}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    className="h-8 w-8 rounded-full border-red-500 text-red-600 hover:bg-red-50 hover:text-red-700"
-                    onClick={() => handleDelete(item.id)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              </li>
+    <div className="px-4">
+      {/* Filter Bar */}
+      <div className="flex flex-wrap gap-2 items-center mb-6 mt-4">
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-[140px] h-8 text-xs">
+            <SelectValue placeholder="Category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all_categories">All Categories</SelectItem>
+            {categories.map((cat) => (
+              <SelectItem key={cat} value={cat}>
+                {cat}
+              </SelectItem>
             ))}
-          </ul>
-        )}
+          </SelectContent>
+        </Select>
+
+        <Select value={mealTypeFilter} onValueChange={setMealTypeFilter}>
+          <SelectTrigger className="w-[140px] h-8 text-xs">
+            <SelectValue placeholder="Meal Type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all_meal_types">All Meal Types</SelectItem>
+            {mealTypes.map((type) => (
+              <SelectItem key={type} value={type}>
+                {type}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
-      {activeItem && (
-        <EditMenuItem
-          open={!!activeItem}
-          onClose={() => setActiveItem(null)}
-          initialValues={{
-            name: activeItem.name,
-            price: String(activeItem.price),
-            category: activeItem.category,
-            meal_type: activeItem.meal_type,
-            available_till: activeItem.available_till,
-            description: activeItem.description,
-            photo_url: activeItem.photo_url || "",
-          }}
-          itemId={activeItem.id}
-          hotelId={hotelId}
-          onSuccess={() => {
-            setActiveItem(null);
-          }}
-        />
+
+      {/* Menu Items */}
+      {isLoading ? (
+        <div className="text-center py-10">Loading menu items...</div>
+      ) : error ? (
+        <div className="text-center py-10 text-red-500">
+          Error loading menu items
+        </div>
+      ) : visibleItems.length === 0 ? (
+        <div className="p-10 text-center text-gray-500">
+          No menu items available. Add new items from the "Add New Item" tab.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {visibleItems.map((item) => (
+            <div
+              key={item.id}
+              className="bg-white rounded-xl shadow-md p-4 flex gap-4 items-start transition-transform duration-200 hover:shadow-lg hover:scale-[1.02] cursor-pointer"
+              onClick={() => handleEditClick(item)}
+            >
+              <div className="flex items-start gap-4">
+                <div className="h-16 w-16 rounded-md overflow-hidden bg-gray-200 flex items-center justify-center">
+                  {item.photo_url ? (
+                    <img
+                      src={item.photo_url}
+                      alt={item.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-gray-400 text-xs">No Image</span>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-md font-semibold text-gray-900">
+                      {item.name}
+                    </h4>
+                    {/* <span className="inline-block text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
+                      Approved
+                    </span> */}
+                  </div>
+                  <p className="mt-1 text-sm text-gray-500 line-clamp-2">
+                    {item.description}
+                  </p>
+                  <div className="mt-2 text-sm text-gray-700 space-x-2">
+                    <span>₹{item.price}</span>
+                    <span>|</span>
+                    <span>{item.category}</span>
+                    <span>|</span>
+                    <span>{item.meal_type}</span>
+                    <span>|</span>
+                    <span className="text-xs text-gray-500">
+                      Till {item.available_till}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
+
+      {/* Infinite Scroll Trigger */}
+      <div ref={loadMoreRef} className="h-10" />
+
+      {/* Edit Dialog */}
+      <Dialog open={!!activeItem} onOpenChange={(open) => !open && setActiveItem(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Menu Item</DialogTitle>
+          </DialogHeader>
+
+          {formValues && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Name</Label>
+                <Input
+                  value={formValues.name}
+                  onChange={(e) =>
+                    setFormValues({ ...formValues, name: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Price</Label>
+                <Input
+                  type="number"
+                  value={formValues.price}
+                  onChange={(e) =>
+                    setFormValues({ ...formValues, price: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Category</Label>
+                <Input
+                  value={formValues.category}
+                  onChange={(e) =>
+                    setFormValues({ ...formValues, category: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Meal Type</Label>
+                <Input
+                  value={formValues.meal_type}
+                  onChange={(e) =>
+                    setFormValues({ ...formValues, meal_type: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Available Till</Label>
+                <Input
+                  value={formValues.available_till}
+                  onChange={(e) =>
+                    setFormValues({
+                      ...formValues,
+                      available_till: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Input
+                  value={formValues.description}
+                  onChange={(e) =>
+                    setFormValues({
+                      ...formValues,
+                      description: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              <div className="flex justify-between pt-4">
+                <Button variant="destructive" onClick={handleDelete}>
+                  Delete
+                </Button>
+                <Button onClick={handleUpdate}>Save</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

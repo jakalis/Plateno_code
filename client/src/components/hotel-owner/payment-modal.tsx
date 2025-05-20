@@ -42,7 +42,7 @@ export function PaymentModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+          <DialogContent className="w-[90%] max-w-sm p-4 sm:p-6 rounded-lg">
         <DialogHeader>
           <DialogTitle>Complete Payment</DialogTitle>
           <DialogDescription>
@@ -63,44 +63,7 @@ export function PaymentModal({
             <span className="text-sm font-medium text-gray-900">{plan.duration}</span>
           </div>
         </div>
-
-        <div className="mb-4">
-          <h4 className="text-sm font-medium text-gray-700 mb-2">
-            Select Payment Method
-          </h4>
-          <div className="grid grid-cols-3 gap-2 mb-4">
-            <div 
-              className={`border rounded-md p-3 flex items-center justify-center cursor-pointer ${
-                selectedPaymentMethod === 'UPI' 
-                  ? 'bg-blue-50 border-blue-300' 
-                  : 'bg-gray-50 hover:bg-gray-100'
-              }`}
-              onClick={() => handlePaymentMethodSelect('UPI')}
-            >
-              <span className={selectedPaymentMethod === 'UPI' ? 'text-blue-700' : ''}>UPI</span>
-            </div>
-            <div 
-              className={`border rounded-md p-3 flex items-center justify-center cursor-pointer ${
-                selectedPaymentMethod === 'Card' 
-                  ? 'bg-blue-50 border-blue-300' 
-                  : 'bg-gray-50 hover:bg-gray-100'
-              }`}
-              onClick={() => handlePaymentMethodSelect('Card')}
-            >
-              <span className={selectedPaymentMethod === 'Card' ? 'text-blue-700' : ''}>Card</span>
-            </div>
-            <div 
-              className={`border rounded-md p-3 flex items-center justify-center cursor-pointer ${
-                selectedPaymentMethod === 'NetBanking' 
-                  ? 'bg-blue-50 border-blue-300' 
-                  : 'bg-gray-50 hover:bg-gray-100'
-              }`}
-              onClick={() => handlePaymentMethodSelect('NetBanking')}
-            >
-              <span className={selectedPaymentMethod === 'NetBanking' ? 'text-blue-700' : ''}>NetBanking</span>
-            </div>
-          </div>
-          <div className="relative">
+        <div className="relative">
             <div className="flex p-3 border rounded-md items-center">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -121,7 +84,13 @@ export function PaymentModal({
               </span>
             </div>
           </div>
-        </div>
+
+
+
+
+
+
+
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>

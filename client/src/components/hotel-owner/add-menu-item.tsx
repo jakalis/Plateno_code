@@ -6,8 +6,21 @@ import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
@@ -18,7 +31,7 @@ const schema = z.object({
   meal_type: z.string().min(1, "Meal type is required"),
   available_till: z.string().min(1, "Available till time is required"),
   description: z.string().min(1, "Description is required"),
-  photo_url: z.string().url("Please enter a valid URL").or(z.literal('')).optional(),
+  photo_url: z.string().url("Please enter a valid URL").or(z.literal("")).optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -30,7 +43,7 @@ interface AddMenuItemProps {
 
 export default function AddMenuItem({ hotelId, onSuccess }: AddMenuItemProps) {
   const { toast } = useToast();
-  
+
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -41,14 +54,14 @@ export default function AddMenuItem({ hotelId, onSuccess }: AddMenuItemProps) {
       available_till: "",
       description: "",
       photo_url: "",
-    }
+    },
   });
-  
+
   const mutation = useMutation({
     mutationFn: async (data: FormValues) => {
       return apiRequest("POST", "/api/menu-update-requests", {
         requested_changes: data,
-        hotel_id: hotelId
+        hotel_id: hotelId,
       });
     },
     onSuccess: () => {
@@ -65,25 +78,29 @@ export default function AddMenuItem({ hotelId, onSuccess }: AddMenuItemProps) {
         description: (error as Error).message || "Something went wrong",
         variant: "destructive",
       });
-    }
+    },
   });
-  
+
   const onSubmit = (data: FormValues) => {
-    // If no photo URL is provided, set a default one
     if (!data.photo_url) {
       data.photo_url = "https://placehold.co/600x400/orange/white?text=Menu+Item";
     }
     mutation.mutate(data);
   };
-  
+
   return (
-    <div>
-      <h3 className="text-lg font-medium text-gray-900 mb-4">Add New Menu Item</h3>
-      
-      <div className="bg-white shadow-sm rounded-lg p-6">
+    <div className="max-w-4xl mx-auto px-6 py-10">
+<h3
+  className="text-xl sm:text-2xl md:text-3xl font-semibold text-gray-700 mb-6"
+  style={{ fontFamily: "'Playfair Display', serif" }}
+>
+  Add New Menu Item
+</h3>
+
+      <div className="bg-white shadow-lg rounded-xl p-8 border border-gray-200">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <div className="grid grid-cols-1 sm:grid-cols-6 gap-6">
               <FormField
                 control={form.control}
                 name="name"
@@ -97,7 +114,7 @@ export default function AddMenuItem({ hotelId, onSuccess }: AddMenuItemProps) {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="price"
@@ -116,7 +133,7 @@ export default function AddMenuItem({ hotelId, onSuccess }: AddMenuItemProps) {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="category"
@@ -142,7 +159,7 @@ export default function AddMenuItem({ hotelId, onSuccess }: AddMenuItemProps) {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="meal_type"
@@ -166,7 +183,7 @@ export default function AddMenuItem({ hotelId, onSuccess }: AddMenuItemProps) {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="available_till"
@@ -180,7 +197,7 @@ export default function AddMenuItem({ hotelId, onSuccess }: AddMenuItemProps) {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="photo_url"
@@ -194,7 +211,7 @@ export default function AddMenuItem({ hotelId, onSuccess }: AddMenuItemProps) {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="description"
@@ -202,11 +219,11 @@ export default function AddMenuItem({ hotelId, onSuccess }: AddMenuItemProps) {
                   <FormItem className="sm:col-span-6">
                     <FormLabel>Description</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        placeholder="Brief description of the dish" 
-                        className="resize-none" 
-                        rows={3} 
-                        {...field} 
+                      <Textarea
+                        placeholder="Brief description of the dish"
+                        className="resize-none"
+                        rows={3}
+                        {...field}
                       />
                     </FormControl>
                     <FormMessage />
@@ -214,20 +231,17 @@ export default function AddMenuItem({ hotelId, onSuccess }: AddMenuItemProps) {
                 )}
               />
             </div>
-            
-            <div className="flex justify-end space-x-3">
-              <Button 
-                type="button" 
-                variant="outline" 
+
+            <div className="flex justify-end space-x-4 pt-4 border-t border-gray-200">
+              <Button
+                type="button"
+                variant="outline"
                 onClick={() => form.reset()}
                 disabled={mutation.isPending}
               >
                 Cancel
               </Button>
-              <Button 
-                type="submit"
-                disabled={mutation.isPending}
-              >
+              <Button type="submit" disabled={mutation.isPending}>
                 {mutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

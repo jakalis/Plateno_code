@@ -240,6 +240,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/menu-items/:id", isAuthenticated, async (req, res) => {
+        const hotel_id = (req.user as { hotel_id: string }).hotel_id;
+    const role = (req.user as { role: string }).role;
     try {
       const menuItem = await storage.getMenuItem(req.params.id);
 
@@ -276,6 +278,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         const validatedData = schema.parse(req.body);
+        const hotel_id = (req.user as { hotel_id: string }).hotel_id;
 
         // If item_id is provided, check if it belongs to the hotel
         if (validatedData.item_id) {
@@ -285,7 +288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return res.status(404).json({ message: "Menu item not found" });
           }
 
-          if (menuItem.hotel_id !== req.user?.hotel_id) {
+          if (menuItem.hotel_id !== hotel_id) {
             return res
               .status(403)
               .json({ message: "You cannot update this menu item" });
@@ -297,11 +300,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           validatedData.requested_changes &&
           !validatedData.requested_changes.hotel_id
         ) {
-          validatedData.requested_changes.hotel_id = req.user?.hotel_id!;
+          validatedData.requested_changes.hotel_id = hotel_id;
         }
 
         const menuUpdateRequest = await storage.createMenuUpdateRequest({
-          hotel_id: req.user?.hotel_id!,
+          hotel_id: hotel_id,
           item_id: validatedData.item_id || null,
           requested_changes: validatedData.requested_changes,
           status: "pending",
@@ -321,17 +324,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   app.get("/api/menu-update-requests", isAuthenticated, async (req, res) => {
+    const hotel_id = (req.user as { hotel_id: string }).hotel_id;
+    const role = (req.user as { role: string }).role;
     try {
       // Super admin can see all requests
-      if (req.user?.role === "super_admin") {
+      if (role === "super_admin") {
         const requests = await storage.getMenuUpdateRequests();
         return res.json(requests);
       }
 
       // Hotel owner can only see their own requests
-      if (req.user?.role === "hotel_owner") {
+      if (role === "hotel_owner") {
         const requests = await storage.getMenuUpdateRequests(
-          req.user.hotel_id!,
+          hotel_id,
         );
         return res.json(requests);
       }

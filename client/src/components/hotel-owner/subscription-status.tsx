@@ -31,20 +31,20 @@ export default function SubscriptionStatus({
         type: selectedPlan,
         hotelOwnerId: hotelOwner.id,
       });
-      
+
       const data = await res.json();
       console.log("Payment creation response:", data);
-      
+
       if (!data.orderId || !data.amount) {
         throw new Error("Invalid response from server - missing orderId or amount");
       }
-      
+
       // Store all relevant information in localStorage
       localStorage.setItem("demoHotelOwnerId", hotelOwner.id);
       localStorage.setItem("currentOrderId", data.orderId);
       localStorage.setItem("currentOrderAmount", data.amount.toString());
       localStorage.setItem("currentOrderType", selectedPlan);
-      
+
       // Navigate directly to Razorpay instead of our payment page
       const options = {
         key: "rzp_test_uieyjEuMbb1jGm", // Hardcoded key for reliability
@@ -53,27 +53,27 @@ export default function SubscriptionStatus({
         name: "Plateno",
         description: `${planDetails[selectedPlan].name} Subscription`,
         order_id: data.orderId,
-        handler: async function(response: any) {
+        handler: async function (response: any) {
           // Send verification to our backend
           try {
             console.log("Payment successful, verifying with backend:", response);
-            
+
             const verificationData = {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
               hotelOwnerId: hotelOwner.id
             };
-            
+
             // Call our verify-payment API
             const verifyRes = await fetch('/api/verify-payment', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(verificationData)
             });
-            
+
             const verifyData = await verifyRes.json();
-            
+
             if (verifyData.success) {
               console.log("Payment verified successfully!");
               // Redirect to success page
@@ -100,11 +100,11 @@ export default function SubscriptionStatus({
           color: "#3399cc"
         }
       };
-      
+
       // Use already loaded Razorpay directly
       const rzp = new (window as any).Razorpay(options);
       rzp.open();
-      
+
       // Close the dialog
       setShowDialog(false);
     } catch (error) {
@@ -124,12 +124,16 @@ export default function SubscriptionStatus({
   };
 
   if (hotelOwner.is_active && activeSubscription) {
+
+
+
     // Active subscription
     return (
       <>
-        <Card className="border rounded-lg p-6 bg-green-50 border-green-200">
-          <CardContent className="p-0">
-            <div className="flex items-center mb-4">
+        <Card className="border rounded-2xl p-6 bg-green-50 border-green-200 shadow-sm">
+          <CardContent className="p-0 space-y-6">
+            {/* Header */}
+            <div className="flex items-start">
               <div className="flex-shrink-0">
                 <span className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
                   <svg
@@ -149,64 +153,80 @@ export default function SubscriptionStatus({
                 </span>
               </div>
               <div className="ml-4">
-                <h3 className="text-lg font-medium text-gray-900">Subscription Active</h3>
-                <p className="text-sm text-gray-500">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Subscription Active
+                </h3>
+                <p className="text-sm text-gray-600">
                   Your hotel subscription is currently active.
                 </p>
               </div>
             </div>
 
-            <div className="border-t border-gray-200 pt-4">
-              <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Plan Type</dt>
-                  <dd className="mt-1 text-sm text-gray-900">
-                    {activeSubscription.plan_type === "monthly" ? "Monthly" : "Yearly"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Start Date</dt>
-                  <dd className="mt-1 text-sm text-gray-900">
-                    {formatDate(activeSubscription.start_date)}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Expiry Date</dt>
-                  <dd className="mt-1 text-sm text-gray-900">
-                    {formatDate(activeSubscription.end_date)}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Order ID</dt>
-                  <dd className="mt-1 text-sm text-gray-900">
-                    {activeSubscription.razorpay_order_id}
-                  </dd>
-                </div>
-              </dl>
-            </div>
 
-            <div className="mt-6">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">
-                Extend Your Subscription
-              </h4>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Button 
-                  onClick={() => openPaymentModal("monthly")}
-                  variant="default"
-                >
-                  Extend Monthly (₹100)
-                </Button>
-                <Button 
-                  onClick={() => openPaymentModal("yearly")}
-                  variant="secondary"
-                >
-                  Extend Yearly (₹1000)
-                </Button>
+
+
+            {/* Details */}
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-6 border-t border-gray-200 pt-4 text-sm">
+              <div>
+                <dt className="font-medium text-gray-900">Plan Type</dt>
+                <dd className="mt-1 text-gray-500">
+                  {activeSubscription.plan_type === "monthly" ? "Monthly" : "Yearly"}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-medium text-gray-900">Start Date</dt>
+                <dd className="mt-1 text-gray-500">
+                  {formatDate(activeSubscription.start_date)}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-medium text-gray-900">Expiry Date</dt>
+                <dd className="mt-1 text-gray-500">
+                  {formatDate(activeSubscription.end_date)}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-medium text-gray-900">Order ID</dt>
+                <dd className="mt-1 text-gray-500">
+                  {activeSubscription.razorpay_order_id}
+                </dd>
+              </div>
+            </dl>
+
+
+
+
+
+            {/* Extend Section */}
+            <div>
+
+
+            <div  className="pb-4">
+                <dt className="text-sm font-medium text-gray-900 mb-2">Extend Your Subscription</dt>
+              </div>
+
+
+              <div className="flex flex-col sm:flex-row sm:justify-start gap-3 items-center">
+                {[
+                  { label: "Extend Monthly (₹100)", type: "monthly" },
+                  { label: "Extend Yearly (₹1000)", type: "yearly" },
+                ].map(({ label, type }) => (
+                  <button
+                    key={type}
+                    onClick={() => openPaymentModal(type)}
+                    className="w-auto max-w-[280px] px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors border border-gray-200"
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
+
+
+
           </CardContent>
         </Card>
-        
+
         <PaymentModal
           isOpen={showDialog}
           onClose={() => setShowDialog(false)}
@@ -215,6 +235,10 @@ export default function SubscriptionStatus({
         />
       </>
     );
+
+
+
+
   } else {
     // Inactive subscription
     return (
@@ -345,7 +369,7 @@ export default function SubscriptionStatus({
             </div>
           </CardContent>
         </Card>
-        
+
         <PaymentModal
           isOpen={showDialog}
           onClose={() => setShowDialog(false)}

@@ -7,7 +7,7 @@ interface NavbarProps {
 
 export default function Navbar({ hotelOwner }: NavbarProps) {
   return (
-    <nav className="bg-white shadow-sm">
+    <nav className="fixed top-0 left-0 w-full z-50 bg-white shadow">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex">
