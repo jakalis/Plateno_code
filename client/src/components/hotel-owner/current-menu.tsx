@@ -200,20 +200,20 @@ export default function CurrentMenu({ hotelId }: CurrentMenuProps) {
           No menu items available. Add new items from the "Add New Item" tab.
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
           {visibleItems.map((item) => (
             <div
               key={item.id}
-              className="bg-white rounded-xl shadow-md p-4 flex gap-4 items-start transition-transform duration-200 hover:shadow-lg hover:scale-[1.02] cursor-pointer"
+              className="bg-white rounded-xl shadow-md p-4 flex gap-4 items-start transition-transform duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[1.02] focus:scale-[1.02] cursor-pointer"
               onClick={() => handleEditClick(item)}
             >
               <div className="flex items-start gap-4">
-                <div className="h-16 w-16 rounded-md overflow-hidden bg-gray-200 flex items-center justify-center">
+                <div className="h-24 w-24 rounded-md overflow-hidden bg-gray-200 flex items-center justify-center">
                   {item.photo_url ? (
                     <img
                       src={item.photo_url}
                       alt={item.name}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-cover rounded-md"
                     />
                   ) : (
                     <span className="text-gray-400 text-xs">No Image</span>

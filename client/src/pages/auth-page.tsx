@@ -1,14 +1,32 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
 import { Redirect } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
 
 const loginSchema = z.object({
@@ -30,8 +48,11 @@ const registerSchema = z.object({
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
   const [authTab, setAuthTab] = useState<"login" | "register">("login");
-  const [contacts, setContacts] = useState([{ key: "", value: "" }]);
+
+  // Initialize contacts with the first contact fixed as 'Restaurant'
+  const [contacts, setContacts] = useState([{ key: "Restaurant", value: "" }]);
   const [services, setServices] = useState([{ key: "", value: "" }]);
+  const [contactError, setContactError] = useState<string | null>(null);
 
   const loginForm = useForm({
     resolver: zodResolver(loginSchema),
@@ -53,7 +74,14 @@ export default function AuthPage() {
     },
   });
 
-  const handleContactChange = (index: number, field: "key" | "value", newValue: string) => {
+  const handleContactChange = (
+    index: number,
+    field: "key" | "value",
+    newValue: string
+  ) => {
+    // Prevent editing the first key
+    if (index === 0 && field === "key") return;
+
     const updated = [...contacts];
     updated[index][field] = newValue;
     setContacts(updated);
@@ -64,28 +92,17 @@ export default function AuthPage() {
   };
 
   const removeContactField = (index: number) => {
+    // Do not remove the first contact ("Restaurant")
+    if (index === 0) return;
     const updated = contacts.filter((_, i) => i !== index);
     setContacts(updated);
   };
 
-  const onLoginSubmit = (data: z.infer<typeof loginSchema>) => {
-    loginMutation.mutate(data);
-  };
-
-  const onRegisterSubmit = (data: z.infer<typeof registerSchema>) => {
-    const contactObj: Record<string, string> = {};
-    contacts.forEach(({ key, value }) => {
-      if (key) contactObj[key] = value;
-    });
-
-    registerMutation.mutate({
-      ...data,
-      contact: contactObj,
-    });
-  };
-
-
-  const handleServiceChange = (index: number, field: "key" | "value", newValue: string) => {
+  const handleServiceChange = (
+    index: number,
+    field: "key" | "value",
+    newValue: string
+  ) => {
     const updated = [...services];
     updated[index][field] = newValue;
     setServices(updated);
@@ -100,17 +117,41 @@ export default function AuthPage() {
     setServices(updated);
   };
 
-  // const onRegisterSubmit = (data: z.infer<typeof registerSchema>) => {
-  //   const serviceObj: Record<string, string> = {};
-  //   services.forEach(({ key, value }) => {
-  //     if (key) serviceObj[key] = value;
-  //   });
+  const onLoginSubmit = (data: z.infer<typeof loginSchema>) => {
+    loginMutation.mutate(data);
+  };
 
-  //   registerMutation.mutate({
-  //     ...data,
-  //     service: contactObj,
-  //   });af
-  // };
+  const onRegisterSubmit = (data: z.infer<typeof registerSchema>) => {
+    const contactObj: Record<string, string> = {};
+    contacts.forEach(({ key, value }) => {
+      if (key) contactObj[key] = value;
+    });
+
+    // Check that the first contact is 'Restaurant' and its value is filled
+    if (
+      !contacts[0] ||
+      contacts[0].key.toLowerCase() !== "restaurant" ||
+      contacts[0].value.trim() === ""
+    ) {
+      setContactError("The first contact must have key 'Restaurant' and a non-empty value.");
+      return;
+    }
+
+    // No need to check others for Restaurant key because first is fixed
+
+    setContactError(null);
+
+    const serviceObj: Record<string, string> = {};
+    services.forEach(({ key, value }) => {
+      if (key) serviceObj[key] = value;
+    });
+
+    registerMutation.mutate({
+      ...data,
+      contact: contactObj,
+      service: serviceObj,
+    });
+  };
 
   if (user) {
     if (user.role === "super_admin") return <Redirect to="/admin" />;
@@ -122,12 +163,14 @@ export default function AuthPage() {
       <div className="max-w-5xl w-full grid md:grid-cols-2 gap-8">
         <div className="hidden md:flex flex-col justify-center p-8 bg-gradient-to-br from-blue-500 to-blue-700 rounded-lg text-white">
           <h1 className="text-3xl font-bold mb-4">Hotel Menu Management Platform</h1>
-          <p className="mb-6">A comprehensive solution for hotels to digitally manage and display their menus.</p>
+          <p className="mb-6">
+            A comprehensive solution for hotels to digitally manage and display their menus.
+          </p>
           <ul className="space-y-2">
-            <li className="flex items-center"><span className="mr-2">✓</span>Create and manage digital menus</li>
-            <li className="flex items-center"><span className="mr-2">✓</span>Generate QR codes for your guests</li>
-            <li className="flex items-center"><span className="mr-2">✓</span>Schedule time-based menu availability</li>
-            <li className="flex items-center"><span className="mr-2">✓</span>Track menu performance with analytics</li>
+            <li className="flex items-center">✓ Create and manage digital menus</li>
+            <li className="flex items-center">✓ Generate QR codes for your guests</li>
+            <li className="flex items-center">✓ Schedule time-based menu availability</li>
+            <li className="flex items-center">✓ Track menu performance with analytics</li>
           </ul>
         </div>
 
@@ -139,7 +182,11 @@ export default function AuthPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="login" value={authTab} onValueChange={(value) => setAuthTab(value as "login" | "register")}>
+            <Tabs
+              defaultValue="login"
+              value={authTab}
+              onValueChange={(value) => setAuthTab(value as "login" | "register")}
+            >
               <TabsList className="grid w-full grid-cols-2 mb-4">
                 <TabsTrigger value="login">Login</TabsTrigger>
                 <TabsTrigger value="register">Register</TabsTrigger>
@@ -258,55 +305,55 @@ export default function AuthPage() {
                       )}
                     />
 
-                    {/* Contact Info Fields */}
+                    {/* Contact Info */}
                     <div className="space-y-2">
-                      <FormLabel>Contact Info (optional)</FormLabel>
+                      <FormLabel>Contact Info (must include key: 'Restaurant')</FormLabel>
                       {contacts.map((entry, index) => (
                         <div key={index} className="flex gap-2 items-center">
                           <Input
-                            placeholder="Key (e.g., phone)"
+                            placeholder="Restaurant"
                             value={entry.key}
-                            onChange={e => handleContactChange(index, "key", e.target.value)}
+                            onChange={(e) => handleContactChange(index, "key", e.target.value)}
+                            readOnly={index === 0}
+                            className={index === 0 ? "text-black font-semibold" : ""}
                           />
                           <Input
-                            placeholder="Value (e.g., +91-1234567890)"
+                            placeholder="Value"
                             value={entry.value}
-                            onChange={e => handleContactChange(index, "value", e.target.value)}
+                            onChange={(e) => handleContactChange(index, "value", e.target.value)}
+                            required={index === 0}
                           />
-                          <button
-                            type="button"
-                            onClick={() => removeContactField(index)}
-                            className="text-red-500 text-sm font-bold"
-                          >
-                            ✕
-                          </button>
+                          {index !== 0 && (
+                            <button
+                              type="button"
+                              onClick={() => removeContactField(index)}
+                              className="text-red-500 text-sm font-bold"
+                            >
+                              ✕
+                            </button>
+                          )}
                         </div>
                       ))}
-                      <button
-                        type="button"
-                        onClick={addContactField}
-                        className="text-blue-600 hover:underline text-sm"
-                      >
-                        + Add contact field
-                      </button>
+                      {contactError && <p className="text-red-600 text-sm">{contactError}</p>}
+                      <Button type="button" variant="outline" size="sm" onClick={addContactField}>
+                        + Add Contact
+                      </Button>
                     </div>
 
-
-
-                    {/* Service Info Fields */}
-                    <div className="space-y-2">
-                      <FormLabel>Service Info (optional)</FormLabel>
+                    {/* Service Info */}
+                    <div className="space-y-2 mt-6">
+                      <FormLabel>Service Info</FormLabel>
                       {services.map((entry, index) => (
                         <div key={index} className="flex gap-2 items-center">
                           <Input
-                            placeholder="Key (e.g., phone)"
+                            placeholder="Key"
                             value={entry.key}
-                            onChange={e => handleServiceChange(index, "key", e.target.value)}
+                            onChange={(e) => handleServiceChange(index, "key", e.target.value)}
                           />
                           <Input
-                            placeholder="Value (e.g., +91-1234567890)"
+                            placeholder="Value"
                             value={entry.value}
-                            onChange={e => handleServiceChange(index, "value", e.target.value)}
+                            onChange={(e) => handleServiceChange(index, "value", e.target.value)}
                           />
                           <button
                             type="button"
@@ -317,33 +364,22 @@ export default function AuthPage() {
                           </button>
                         </div>
                       ))}
-                      <button
-                        type="button"
-                        onClick={addServiceField}
-                        className="text-blue-600 hover:underline text-sm"
-                      >
-                        + Add service field
-                      </button>
+                      <Button type="button" variant="outline" size="sm" onClick={addServiceField}>
+                        + Add Service
+                      </Button>
                     </div>
-
-
-
-
 
                     <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
                       {registerMutation.isPending ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Creating account...
+                          Registering...
                         </>
                       ) : (
-                        "Register as Hotel Owner"
+                        "Register"
                       )}
                     </Button>
                   </form>
-
-
-
                 </Form>
               </TabsContent>
             </Tabs>

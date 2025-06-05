@@ -33,6 +33,9 @@ export default function PublicMenuPage() {
     enabled: !!hotel && hotel.is_active,
   });
 
+
+
+
   const isLoading = hotelLoading || menuLoading;
   const error = hotelError || menuError;
 
@@ -94,7 +97,7 @@ export default function PublicMenuPage() {
 
   return (
     <PublicLayout hotelId={hotelId!}>
-      <div className="min-h-screen bg-slate-50 py-6 relative">
+      <div className="min-h-screen bg-slate-50 relative">
         {/* Cart Button */}
         {/* Mini Cart Preview Bottom Sheet */}
 
@@ -104,10 +107,10 @@ export default function PublicMenuPage() {
             onClick={() => setCartOpen(true)}
             className="fixed bottom-0 left-0 w-full z-50 cursor-pointer"
           >
-            <div className="w-full bg-[#e34646] text-white px-4 py-3 flex justify-between text-center items-center sm:py-4 sm:px-6 transition-all">
+            <div className="w-full bg-[#ef4f5f] text-white px-4 py-3 flex justify-between text-center items-center sm:py-4 sm:px-6 transition-all">
               <div className="w-full text-center">
                 <p className="text-sm sm:text-base font-semibold">
-                  {cart.reduce((sum, item) => sum + item.quantity, 0)} item{cart.reduce((sum, item) => sum + item.quantity, 0) > 1 ? "s" : ""} in cart
+                  {cart.reduce((sum, item) => sum + item.quantity, 0)} item{cart.reduce((sum, item) => sum + item.quantity, 0) > 1 ? "s" : ""} added
                 </p>
                 <p className="text-xs sm:text-sm text-red-100">
                   ₹{cart.reduce((total, item) => total + item.price * item.quantity, 0)} total
@@ -116,8 +119,6 @@ export default function PublicMenuPage() {
             </div>
           </div>
         )}
-
-
 
         <Sheet open={cartOpen} onOpenChange={setCartOpen}>
           <SheetContent
@@ -160,29 +161,41 @@ export default function PublicMenuPage() {
                     <span>₹{cart.reduce((total, item) => total + item.price * item.quantity, 0)}</span>
                   </div>
                 </div>
+                <div className="p-4 bg-yellow-100 text-yellow-800 text-sm rounded-lg text-center">
+
+                  📞 Dial <span className="font-semibold">{hotel.contact.Restaurant}</span> from your room to order.
+                </div>
+
+
+
+
+
+
               </div>
             )}
           </SheetContent>
         </Sheet>
 
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-0 sm:px-4 lg:px-8">
           {/* Hotel Header */}
 
 
-          <div className="relative bg-gradient-to-r from-primary/10 to-transparent rounded-xl p-4 sm:p-6 md:p-8 mb-8 overflow-hidden">
+          <div className="relative bg-gradient-to-r from-primary/10 to-transparent rounded-xl p-4 sm:p-6 md:p-8 mb-8 overflow-hidden text-center">
             <img
               src={background}
               alt="Decorative background"
               className="absolute inset-0 w-full h-full object-cover opacity-5 pointer-events-none rounded-xl"
             />
-            <div className="relative z-0">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-4 break-words">
-                {hotel.name}
-              </h1>
-              <p className="text-base sm:text-lg text-gray-600 mb-6 max-w-full sm:max-w-xl md:max-w-2xl break-words">
-                {hotel.description}
-              </p>
+            <div className="flex justify-center px-4">
+              <div className="relative z-0 text-center max-w-full sm:max-w-xl md:max-w-2xl">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-700 mb-2 break-words">
+                  {hotel.name}
+                </h1>
+                <p className="text-base sm:text-lg text-gray-600 mb-2 break-words">
+                  {hotel.description}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -214,17 +227,16 @@ export default function PublicMenuPage() {
             </Select>
           </div>
 
+
+
+
+
           {/* Menu Items */}
-          <div className="space-y-10">
-
-
-
-
-
+          <div className="space-y-3">
             {Object.keys(groupedItems).map(category => (
               <div key={category} className="mt-4">
                 <h2 className="text-xl sm:text-2xl font-semibold text-gray-700 mb-3 px-2">{category}</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0">
                   {groupedItems[category].map(item => {
                     const cartItem = cart.find(c => c.id === item.id);
                     const quantity = cartItem?.quantity || 0;
@@ -232,42 +244,42 @@ export default function PublicMenuPage() {
                     return (
                       <div
                         key={item.id}
-                        className="flex gap-4 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden p-0 items-center hover:shadow-md transition"
+                        className="flex gap-3 bg-white border border-gray-100 shadow-sm overflow-hidden p-0 items-center"
+                      // style={{ height: '160px' }}
                       >
                         {/* Image + Button */}
-                        <div className="flex flex-col items-center gap-1 w-[90px] sm:w-[100px] relative pb-6">
-                          <img
-                            src={item.photo_url}
-                            alt={item.name}
-                            className="w-full h-[100px] object-cover rounded-md"
-                          />
-
-
-
+                        <div className="flex flex-col items-center gap-1 w-[140px] sm:w-[160px] relative pb-6">
+                          <div className="w-full aspect-[4/3]">
+                            <img
+                              src={item.photo_url}
+                              alt={item.name}
+                              className="w-full h-full object-cover rounded-md"
+                            />
+                          </div>
                           <div
-                            className="absolute bottom-0 left-1/2 transform -translate-x-1/2"
+                            className="absolute bottom-1 left-1/2 transform -translate-x-1/2"
                             style={{ width: '96px', height: '32px' }}
                           >
                             {quantity === 0 ? (
                               <button
                                 onClick={() => addToCart({ id: item.id, name: item.name, price: +item.price })}
-                                className="w-full h-full bg-gray-50 text-gray-600 rounded-full font-semibold text-sm shadow-sm hover:bg-gray-200 transition flex items-center justify-center"
+                                className="w-full h-full bg-[#fff5f6] text-[#ef5463] rounded-md border border-[#ef5463] font-semibold text-sm shadow-sm hover:bg-gray-200 transition flex items-center justify-center"
                                 style={{ padding: 0 }}
                               >
                                 ADD
                               </button>
                             ) : (
-                              <div className="bg-white rounded-full shadow-sm px-2 py-1 flex items-center gap-1 w-full h-full">
+                              <div className="bg-[#ef5463] rounded-md shadow-sm px-2 py-1 flex items-center gap-1 w-full h-full">
                                 <button
                                   onClick={() => decreaseQuantity(item.id)}
-                                  className="w-6 h-6 flex items-center justify-center rounded-full text-sm border border-red-300 text-red-600 hover:bg-red-50 transition"
+                                  className="w-6 h-6 flex items-center justify-center rounded-md text-sm text-white transition font-bold"
                                 >
                                   <Minus className="h-3 w-3" />
                                 </button>
-                                <span className="text-sm font-semibold w-5 text-center">{quantity}</span>
+                                <span className="text-sm text-white font-semibold w-5 text-center">{quantity}</span>
                                 <button
                                   onClick={() => addToCart({ id: item.id, name: item.name, price: +item.price })}
-                                  className="w-6 h-6 flex items-center justify-center rounded-full border text-green-600 border-green-300 hover:bg-green-50 transition"
+                                  className="w-6 h-6 flex items-center justify-center rounded-md text-white transition font-bold"
                                 >
                                   <Plus className="h-3 w-3" />
                                 </button>
@@ -278,9 +290,9 @@ export default function PublicMenuPage() {
 
                         {/* Text */}
                         <div className="flex-1">
-                          <h3 className="text-base sm:text-lg md:text-xl font-semibold text-gray-700">{item.name}</h3>
-                          <p className="text-xs sm:text-sm md:text-base text-gray-600 line-clamp-2 mt-1">{item.description}</p>
-                          <div className="text-sm sm:text-base md:text-lg font-bold text-gray-700 mt-2">₹{item.price}</div>
+                          <h3 className="text-base sm:text-lg md:text-lg font-semibold text-gray-700">{item.name}</h3>
+                          <p className="text-xs sm:text-sm md:text-sm text-gray-600 line-clamp-2 mt-1">{item.description}</p>
+                          <div className="text-sm sm:text-base md:text-base text-gray-700 mt-2">₹{item.price}</div>
                         </div>
                       </div>
                     );
@@ -288,14 +300,14 @@ export default function PublicMenuPage() {
                 </div>
               </div>
             ))}
-
-
-
-
-
-
-
           </div>
+
+
+
+
+
+
+
         </div>
       </div>
     </PublicLayout>
