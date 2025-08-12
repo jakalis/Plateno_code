@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { HotelOwner } from "@/lib/types";
+import { APP_NAME, SLOGAN} from "@/pages/constants";
 
 interface NavbarProps {
   hotelOwner?: HotelOwner;
@@ -25,7 +26,7 @@ export default function Navbar({ hotelOwner }: NavbarProps) {
                   <path d="M3 17h18M3 7h18M13 7v10M7 7v10"></path>
                 </svg>
                 <span className="ml-2 text-xl font-semibold text-primary-600">
-                  HotelHub
+                  {APP_NAME}
                 </span>
             </Link>
           </div>
@@ -33,7 +34,7 @@ export default function Navbar({ hotelOwner }: NavbarProps) {
             <div className="ml-3 relative">
               {hotelOwner && (
                 <div className="flex items-center">
-                  <span className="text-sm font-medium text-gray-700 mr-2">
+                  <span className="text-sm font-medium text-gray-600 mr-2">
                     {hotelOwner.name}
                   </span>
                   <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center">

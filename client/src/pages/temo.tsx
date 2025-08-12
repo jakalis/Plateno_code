@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ArrowLeft } from "lucide-react";
 import { MoreVertical } from "lucide-react";
-import { APP_NAME, SLOGAN, APP_BASE_URL} from "@/pages/constants";
+import { APP_NAME, SLOGAN} from "@/pages/constants";
 
 function BackButton({ onClick }: { onClick: () => void }) {
   return (
@@ -147,22 +147,18 @@ export default function HotelOwnerDashboard() {
           <div className="grid grid-cols-3 items-center w-full">
 
             {/* Left - Logo */}
-<div className="flex items-center">
-  <a href={APP_BASE_URL}target="_blank" rel="noopener noreferrer">
-    <div className="h-10 w-10 rounded-full border border-gray-300 shadow-sm overflow-hidden flex items-center justify-center bg-white">
-      <img
-        src={logo}
-        alt="Logo"
-        className="h-8 w-8 object-contain"
-      />
-    </div>
-  </a>
-</div>
+            <div className="flex items-center">
+              <img
+                src={logo}
+                alt="Logo"
+                className="h-10 w-10 object-contain rounded-full border border-gray-300 shadow-sm"
+              />
+            </div>
 
             {/* Center - Title */}
             <div className="text-center">
               <h1
-                className="text-2xl sm:text-3xl md:text-4xl font-semibold text-gray-600 md:text-gray-700 tracking-wide"
+                className="text-2xl sm:text-3xl md:text-4xl font-semibold text-gray-700 md:text-gray-700 tracking-wide"
                 style={{ fontFamily: "'Playfair Display', serif" }}
               >
                 {APP_NAME}

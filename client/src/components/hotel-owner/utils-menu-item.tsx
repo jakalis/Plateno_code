@@ -38,6 +38,8 @@ const schema = z.object({
   available_till: z.string().min(1),
   description: z.string().min(1),
   photo_url: z.string().url().or(z.literal("")).optional(),
+  spicy_level: z.enum(["sweet", "mild", "spicy"]),
+  diet_type: z.enum(["veg", "non-veg", "vegan"]),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -197,19 +199,80 @@ export default function EditMenuItemRequest({
                             <SelectValue placeholder="Select category" />
                           </SelectTrigger>
                         </FormControl>
+<SelectContent>
+  <SelectItem value="starters">Starters</SelectItem>
+  <SelectItem value="soup">Soup</SelectItem>
+  <SelectItem value="salad">Salad</SelectItem>
+  <SelectItem value="mains">Mains</SelectItem>
+  <SelectItem value="curry">Curry</SelectItem>
+  <SelectItem value="bread">Bread</SelectItem>
+  <SelectItem value="rice">Rice</SelectItem>
+  <SelectItem value="noodles">Noodles</SelectItem>
+  <SelectItem value="bbq">BBQ</SelectItem>
+  <SelectItem value="pizza">Pizza</SelectItem>
+  <SelectItem value="burger">Burger</SelectItem>
+  <SelectItem value="seafood">Seafood</SelectItem>
+  <SelectItem value="desserts">Desserts</SelectItem>
+  <SelectItem value="drinks">Drinks</SelectItem>
+  <SelectItem value="coffee">Coffee</SelectItem>
+  <SelectItem value="sides">Sides</SelectItem>
+  <SelectItem value="other">Other</SelectItem>
+</SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="spicy_level"
+                  render={({ field }) => (
+                    <FormItem className="sm:col-span-3">
+                      <FormLabel>Spicy Level</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select spicy level" />
+                          </SelectTrigger>
+                        </FormControl>
                         <SelectContent>
-                          <SelectItem value="Drinks">Drinks</SelectItem>
-                          <SelectItem value="Curry">Curry</SelectItem>
-                          <SelectItem value="Bread">Bread</SelectItem>
-                          <SelectItem value="Rice">Rice</SelectItem>
-                          <SelectItem value="Dessert">Dessert</SelectItem>
-                          <SelectItem value="Appetizer">Appetizer</SelectItem>
+                          <SelectItem value="sweet">🧊</SelectItem>
+                          <SelectItem value="mild">🌶️</SelectItem>
+                          <SelectItem value="spicy">🌶️🌶️</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
+
+<FormField
+  control={form.control}
+  name="diet_type"
+  render={({ field }) => (
+    <FormItem className="sm:col-span-3">
+      <FormLabel>Diet Type</FormLabel>
+      <Select onValueChange={field.onChange} defaultValue={field.value}>
+        <FormControl>
+          <SelectTrigger>
+            <SelectValue placeholder="Select diet type" />
+          </SelectTrigger>
+        </FormControl>
+        <SelectContent>
+          <SelectItem value="veg">Veg</SelectItem>
+          <SelectItem value="non-veg">Non-Veg</SelectItem>
+          <SelectItem value="vegan">Vegan</SelectItem>
+        </SelectContent>
+      </Select>
+      <FormMessage />
+    </FormItem>
+  )}
+/>
+
+
+
 
                 <FormField
                   control={form.control}

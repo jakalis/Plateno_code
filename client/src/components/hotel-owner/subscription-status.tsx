@@ -7,6 +7,16 @@ import { useLocation } from "wouter";
 import { PaymentModal } from "@/components/hotel-owner/payment-modal";
 import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
+import { differenceInDays } from "date-fns";
+import { APP_NAME, SLOGAN} from "@/pages/constants";
+
+function getRemainingDaysText(date: string | Date) {
+  const days = differenceInDays(new Date(date), new Date());
+  if (days < 0) return "Expired";
+  if (days === 0) return "Expires Today";
+  if (days === 1) return "1 day left";
+  return `${days} days left`;
+}
 
 interface SubscriptionStatusProps {
   hotelOwner: HotelOwner;
@@ -50,7 +60,7 @@ export default function SubscriptionStatus({
         key: "rzp_test_uieyjEuMbb1jGm", // Hardcoded key for reliability
         amount: data.amount,
         currency: "INR",
-        name: "Plateno",
+        name: {APP_NAME},
         description: `${planDetails[selectedPlan].name} Subscription`,
         order_id: data.orderId,
         handler: async function (response: any) {
@@ -127,113 +137,79 @@ export default function SubscriptionStatus({
 
 
 
+
     // Active subscription
     return (
-      <>
-        <Card className="border rounded-2xl p-6 bg-green-50 border-green-200 shadow-sm">
-          <CardContent className="p-0 space-y-6">
-            {/* Header */}
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6 text-green-600"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                </span>
-              </div>
-              <div className="ml-4">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Subscription Active
-                </h3>
-                <p className="text-sm text-gray-600">
-                  Your hotel subscription is currently active.
-                </p>
-              </div>
-            </div>
+<>
+  <Card className="border rounded-2xl p-6 bg-green-50 border-green-200 shadow-sm">
+    <CardContent className="p-0 space-y-6">
+      {/* Header */}
+      <div className="flex items-start gap-4">
+        <div className="flex-shrink-0">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 shadow-sm">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-6 w-6 text-green-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+            </svg>
+          </span>
+        </div>
+        <div>
+          <h3 className="text-xl font-semibold text-gray-900">Subscription Active</h3>
+          <p className="text-sm text-gray-600">Your hotel subscription is currently active.</p>
+        </div>
+      </div>
+
+      {/* Expiry Info - Highlighted */}
+      <div className="bg-white border border-green-100 rounded-xl p-5 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h4 className="text-md text-gray-600 font-medium mb-1">Expiry Date</h4>
+          <div className="text-2xl font-bold text-gray-900">
+            {formatDate(hotelOwner.subscription_end_date)}
+          </div>
+        </div>
+        <div className="text-sm text-green-700 bg-green-100 px-3 py-1 rounded-full font-medium inline-block w-fit">
+          {getRemainingDaysText(hotelOwner.subscription_end_date)}
+        </div>
+      </div>
+
+      {/* Extend Section */}
+      <div>
+        <h4 className="text-sm font-semibold text-gray-900 mb-3">Extend Your Subscription</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {([
+  { label: "Extend Monthly", type: "monthly" },
+  { label: "Extend Yearly", type: "yearly" },
+] as const).map(({ label, type }) => (
+  <div
+    key={type}
+    onClick={() => openPaymentModal(type)}
+    className="rounded-xl border border-blue-200 bg-blue-50 hover:shadow-md transition-shadow p-4 cursor-pointer flex flex-col items-start gap-2"
+  >
+    <div className="text-base font-semibold text-blue-800">{label}</div>
+    <div className="text-sm text-blue-600">
+      {planDetails[type].amount} / {type === "monthly" ? "month" : "year"}
+    </div>
+  </div>
+))}
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+
+  <PaymentModal
+    isOpen={showDialog}
+    onClose={() => setShowDialog(false)}
+    planType={selectedPlan}
+    onConfirm={handleCreatePayment}
+  />
+</>
 
 
-
-
-            {/* Details */}
-            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-6 border-t border-gray-200 pt-4 text-sm">
-              <div>
-                <dt className="font-medium text-gray-900">Plan Type</dt>
-                <dd className="mt-1 text-gray-500">
-                  {activeSubscription.plan_type === "monthly" ? "Monthly" : "Yearly"}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium text-gray-900">Start Date</dt>
-                <dd className="mt-1 text-gray-500">
-                  {formatDate(activeSubscription.start_date)}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium text-gray-900">Expiry Date</dt>
-                <dd className="mt-1 text-gray-500">
-                  {formatDate(activeSubscription.end_date)}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-medium text-gray-900">Order ID</dt>
-                <dd className="mt-1 text-gray-500">
-                  {activeSubscription.razorpay_order_id}
-                </dd>
-              </div>
-            </dl>
-
-
-
-
-
-            {/* Extend Section */}
-            <div>
-
-
-            <div  className="pb-4">
-                <dt className="text-sm font-medium text-gray-900 mb-2">Extend Your Subscription</dt>
-              </div>
-
-
-              <div className="flex flex-col sm:flex-row sm:justify-start gap-3 items-center">
-                {[
-                  { label: "Extend Monthly (₹100)", type: "monthly" },
-                  { label: "Extend Yearly (₹1000)", type: "yearly" },
-                ].map(({ label, type }) => (
-                  <button
-                    key={type}
-                    onClick={() => openPaymentModal(type)}
-                    className="w-auto max-w-[280px] px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors border border-gray-200"
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-
-
-          </CardContent>
-        </Card>
-
-        <PaymentModal
-          isOpen={showDialog}
-          onClose={() => setShowDialog(false)}
-          planType={selectedPlan}
-          onConfirm={handleCreatePayment}
-        />
-      </>
     );
 
 
@@ -320,7 +296,7 @@ export default function SubscriptionStatus({
                 </div>
 
                 {/* Yearly Plan Card */}
-                <div className="border rounded-lg bg-white p-5 hover:shadow-md transition-shadow relative overflow-hidden">
+                <div className="border rounded-lg bg-white p-5 hover:shadow-md transition-shadow relative  ">
                   <div className="absolute top-0 right-0">
                     <div className="bg-secondary-500 text-white text-xs font-bold px-3 py-1 transform rotate-45 translate-x-5 -translate-y-1">
                       SAVE 17%
@@ -360,7 +336,7 @@ export default function SubscriptionStatus({
                   <Button
                     className="mt-5 w-full"
                     onClick={() => openPaymentModal("yearly")}
-                    variant="secondary"
+                    variant="default"
                   >
                     Subscribe Now
                   </Button>
@@ -380,3 +356,31 @@ export default function SubscriptionStatus({
     );
   }
 }
+
+
+
+
+// <div>
+// <dt className="font-medium text-gray-900">Plan Type</dt>
+// <dd className="mt-1 text-gray-500">
+//   {activeSubscription.plan_type === "monthly" ? "Monthly" : "Yearly"}
+// </dd>
+// </div>
+// <div>
+// <dt className="font-medium text-gray-900">Start Date</dt>
+// <dd className="mt-1 text-gray-500">
+//   {formatDate(activeSubscription.start_date)}
+// </dd>
+// </div>
+// <div>
+// <dt className="font-medium text-gray-900">Expiry Date</dt>
+// <dd className="mt-1 text-gray-500">
+//   {formatDate(activeSubscription.end_date)}
+// </dd>
+// </div>
+// <div>
+// <dt className="font-medium text-gray-900">Order ID</dt>
+// <dd className="mt-1 text-gray-500">
+//   {activeSubscription.razorpay_order_id}
+// </dd>
+// </div>

@@ -7,6 +7,8 @@ import { promisify } from "util";
 import { storage } from "./storage";
 import { User, InsertUser, loginSchema } from "@shared/schema";
 import { z } from "zod";
+import { v4 as uuidv4 } from "uuid";
+import nodemailer from "nodemailer";
 
 declare global {
   namespace Express {
@@ -15,6 +17,7 @@ declare global {
 }
 
 const scryptAsync = promisify(scrypt);
+const resetTokens: Record<string, { userId: string; expiresAt: Date }> = {};
 
 export async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
@@ -39,6 +42,9 @@ export function setupAuth(app: Express) {
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     },
   };
+
+  const oneWeekLater = new Date();
+  oneWeekLater.setDate(oneWeekLater.getDate() + 7);
 
   app.use(session(sessionSettings));
   app.use(passport.initialize());
@@ -90,9 +96,18 @@ export function setupAuth(app: Express) {
         hotel_name: z.string(),
         hotel_description: z.string(),
         hotel_location: z.string(),
+        contact: z.record(z.string(), z.string()),
+        service: z.record(z.string(), z.string()),
+        subscription_end_date:  z.date(),// ✅ set default 7 days later
       });
 
-      const validatedData = schema.parse(req.body);
+        // Step 2: Manually construct a clean object
+        const fullBody = {
+          ...req.body,
+          subscription_end_date: oneWeekLater, // ← converts it to string (safe for logging)
+        };
+
+        const validatedData = schema.parse(fullBody);
       
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(validatedData.email);
@@ -109,7 +124,10 @@ export function setupAuth(app: Express) {
         description: validatedData.hotel_description,
         location: validatedData.hotel_location,
         qr_code_url: `/hotel/${Date.now()}`,
-        is_active: true
+        is_active: true,
+        contact: validatedData.contact ?? {},
+        service: validatedData.service ?? {},
+        subscription_end_date:  validatedData.subscription_end_date,
       });
       
       // Create user
@@ -188,4 +206,71 @@ export function setupAuth(app: Express) {
     
     res.status(200).json(userResponse);
   });
+
+  app.post("/api/forgot-password", async (req, res) => {
+    const { email } = req.body;
+  
+    if (!email || typeof email !== "string") {
+      return res.status(400).json({ message: "Email is required" });
+    }
+  
+    const user = await storage.getUserByEmail(email);
+    if (!user) {
+      // Avoid leaking info
+      return res.status(200).json({ message: "If this email is registered, a reset link has been sent" });
+    }
+  
+    const token = uuidv4();
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour validity
+    resetTokens[token] = { userId: user.id, expiresAt };
+  
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password/${token}`;
+  
+    // Send email (replace with actual SMTP config)
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+  
+    await transporter.sendMail({
+      to: email,
+      subject: "Password Reset Link",
+      html: `<p>You requested a password reset. Click the link below to reset your password:</p>
+             <a href="${resetLink}">${resetLink}</a>
+             <p>This link is valid for 1 hour.</p>`,
+    });
+  
+    res.status(200).json({ message: "If this email is registered, a reset link has been sent" });
+  });
+
+  app.post("/api/reset-password/:token", async (req, res) => {
+    const { token } = req.params;
+    const { password } = req.body;
+  
+    if (!password || password.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters" });
+    }
+  
+    const record = resetTokens[token];
+    if (!record || record.expiresAt < new Date()) {
+      return res.status(400).json({ message: "Invalid or expired token" });
+    }
+  
+    const user = await storage.getUser(record.userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+  
+    const hashed = await hashPassword(password);
+    await storage.updateUserPassword(user.id, hashed);
+  
+    // Invalidate token
+    delete resetTokens[token];
+  
+    res.status(200).json({ message: "Password updated successfully" });
+  });
+  
 }

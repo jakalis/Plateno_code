@@ -7,6 +7,7 @@ import PageHeader from "@/components/ui/page-header";
 import MenuRequests from "@/components/super-admin/menu-requests";
 import HotelManagement from "@/components/super-admin/hotel-management";
 import AllMenusView from "../components/super-admin/all-menus-view";
+import { APP_NAME, SLOGAN} from "@/pages/constants";
 
 export default function SuperAdminDashboard() {
   const { user, logoutMutation } = useAuth();
@@ -19,7 +20,7 @@ export default function SuperAdminDashboard() {
   return (
     <div className="min-h-screen bg-slate-50">
       <PageHeader 
-        title="Plateno - Admin" 
+        title={`${APP_NAME} - Admin`} 
         userEmail={user.email} 
         onLogout={() => logoutMutation.mutate()} 
       />

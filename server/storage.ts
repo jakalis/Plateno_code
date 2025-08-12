@@ -39,6 +39,8 @@ export interface IStorage {
     subscription_updated_date: Date
   ): Promise<Hotel | undefined> ;
 
+  updateUserPassword(userId: string, hashedPassword: string): Promise<User | undefined>;
+
   // User Methods
   getUsers(): Promise<User[]>;
   getUser(id: string): Promise<User | undefined>;
@@ -429,6 +431,18 @@ export class DatabaseStorage implements IStorage {
   
     return result[0].subscriptionEndDate;
   }
+
+  async updateUserPassword(userId: string, hashedPassword: string): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({ password: hashedPassword })
+      .where(eq(users.id, userId))
+      .returning();
+  
+    return updatedUser;
+  }
+  
+  
 }
 
 export const storage = new DatabaseStorage();

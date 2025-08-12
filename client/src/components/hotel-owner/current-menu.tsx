@@ -7,6 +7,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,9 +26,14 @@ interface CurrentMenuProps {
 
 const ITEMS_PER_PAGE = 10;
 
+const spicyLevels = ["sweet", "mild", "spicy"];
+const dietTypes = ["veg", "non-veg", "vegan"];
+
 export default function CurrentMenu({ hotelId }: CurrentMenuProps) {
   const [categoryFilter, setCategoryFilter] = useState("");
   const [mealTypeFilter, setMealTypeFilter] = useState("");
+  const [spicyLevelFilter, setSpicyLevelFilter] = useState("");
+  const [dietTypeFilter, setDietTypeFilter] = useState("");
   const [activeItem, setActiveItem] = useState<MenuItem | null>(null);
   const [formValues, setFormValues] = useState<any>(null);
   const [page, setPage] = useState(1);
@@ -54,13 +60,26 @@ export default function CurrentMenu({ hotelId }: CurrentMenuProps) {
           item.category === categoryFilter) &&
         (mealTypeFilter === "" ||
           mealTypeFilter === "all_meal_types" ||
-          item.meal_type === mealTypeFilter)
+          item.meal_type === mealTypeFilter) &&
+        (spicyLevelFilter === "" ||
+          spicyLevelFilter === "all_spicy_levels" ||
+          item.spicy_level === spicyLevelFilter) &&
+        (dietTypeFilter === "" ||
+          dietTypeFilter === "all_diet_types" ||
+          item.diet_type === dietTypeFilter)
       );
     });
 
     const slice = filtered.slice(0, page * ITEMS_PER_PAGE);
     setVisibleItems(slice);
-  }, [menuItems, categoryFilter, mealTypeFilter, page]);
+  }, [
+    menuItems,
+    categoryFilter,
+    mealTypeFilter,
+    spicyLevelFilter,
+    dietTypeFilter,
+    page,
+  ]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -84,6 +103,8 @@ export default function CurrentMenu({ hotelId }: CurrentMenuProps) {
     };
   }, [loadMoreRef.current]);
 
+
+
   const categories = Array.from(
     new Set(menuItems?.map((item) => item.category) ?? [])
   );
@@ -98,6 +119,8 @@ export default function CurrentMenu({ hotelId }: CurrentMenuProps) {
       price: String(item.price),
       category: item.category,
       meal_type: item.meal_type,
+      spicy_level: item.spicy_level || "",
+      diet_type: item.diet_type || "",
       available_till: item.available_till,
       description: item.description,
       photo_url: item.photo_url || "",
@@ -106,7 +129,7 @@ export default function CurrentMenu({ hotelId }: CurrentMenuProps) {
 
   const handleUpdate = async () => {
     if (!activeItem) return;
-  
+
     const res = await fetch("/api/menu-update-requests", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -118,7 +141,7 @@ export default function CurrentMenu({ hotelId }: CurrentMenuProps) {
         },
       }),
     });
-  
+
     if (res.ok) {
       toast({
         title: "Submitted for Review",
@@ -133,8 +156,6 @@ export default function CurrentMenu({ hotelId }: CurrentMenuProps) {
       });
     }
   };
-  
-  
 
   const handleDelete = async () => {
     if (!activeItem) return;
@@ -156,11 +177,11 @@ export default function CurrentMenu({ hotelId }: CurrentMenuProps) {
   };
 
   return (
-    <div className="px-4">
+    <div className="bg-slate-50 relative min-h-[calc(100vh-80px)] pb-10">
       {/* Filter Bar */}
-      <div className="flex flex-wrap gap-2 items-center mb-6 mt-4">
+      <div className="flex gap-2 overflow-x-auto flex-nowrap items-center mb-6 mt-4 scrollbar-hide">
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-[140px] h-8 text-xs">
+          <SelectTrigger className="w-[140px] h-8 text-xs focus:outline-none focus:ring-0 focus:ring-offset-0">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>
@@ -174,7 +195,7 @@ export default function CurrentMenu({ hotelId }: CurrentMenuProps) {
         </Select>
 
         <Select value={mealTypeFilter} onValueChange={setMealTypeFilter}>
-          <SelectTrigger className="w-[140px] h-8 text-xs">
+          <SelectTrigger className="w-[140px] h-8 text-xs focus:outline-none focus:ring-0 focus:ring-offset-0">
             <SelectValue placeholder="Meal Type" />
           </SelectTrigger>
           <SelectContent>
@@ -182,6 +203,36 @@ export default function CurrentMenu({ hotelId }: CurrentMenuProps) {
             {mealTypes.map((type) => (
               <SelectItem key={type} value={type}>
                 {type}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Spicy Level Filter */}
+        <Select value={spicyLevelFilter} onValueChange={setSpicyLevelFilter}>
+          <SelectTrigger className="w-[140px] h-8 text-xs focus:outline-none focus:ring-0 focus:ring-offset-0">
+            <SelectValue placeholder="Spicy Level" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all_spicy_levels">All Spicy Levels</SelectItem>
+            {spicyLevels.map((level) => (
+              <SelectItem key={level} value={level}>
+                {level.charAt(0).toUpperCase() + level.slice(1)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Diet Type Filter */}
+        <Select value={dietTypeFilter} onValueChange={setDietTypeFilter}>
+          <SelectTrigger className="w-[140px] h-8 text-xs focus:outline-none focus:ring-0 focus:ring-offset-0">
+            <SelectValue placeholder="Diet Type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all_diet_types">All Diet Types</SelectItem>
+            {dietTypes.map((type) => (
+              <SelectItem key={type} value={type}>
+                {type.charAt(0).toUpperCase() + type.slice(1)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -200,61 +251,121 @@ export default function CurrentMenu({ hotelId }: CurrentMenuProps) {
           No menu items available. Add new items from the "Add New Item" tab.
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
-          {visibleItems.map((item) => (
-            <div
-              key={item.id}
-              className="bg-white rounded-xl shadow-md p-4 flex gap-4 items-start transition-transform duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[1.02] focus:scale-[1.02] cursor-pointer"
-              onClick={() => handleEditClick(item)}
-            >
-              <div className="flex items-start gap-4">
-                <div className="h-24 w-24 rounded-md overflow-hidden bg-gray-200 flex items-center justify-center">
-                  {item.photo_url ? (
-                    <img
-                      src={item.photo_url}
-                      alt={item.name}
-                      className="h-full w-full object-cover rounded-md"
-                    />
-                  ) : (
-                    <span className="text-gray-400 text-xs">No Image</span>
-                  )}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-md font-semibold text-gray-900">
-                      {item.name}
-                    </h4>
-                    {/* <span className="inline-block text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
-                      Approved
-                    </span> */}
-                  </div>
-                  <p className="mt-1 text-sm text-gray-500 line-clamp-2">
-                    {item.description}
-                  </p>
-                  <div className="mt-2 text-sm text-gray-700 space-x-2">
-                    <span>₹{item.price}</span>
-                    <span>|</span>
-                    <span>{item.category}</span>
-                    <span>|</span>
-                    <span>{item.meal_type}</span>
-                    <span>|</span>
-                    <span className="text-xs text-gray-500">
-                      Till {item.available_till}
-                    </span>
-                  </div>
+
+        <>
+          {categories.map((category) => {
+            const itemsInCategory = visibleItems.filter(item => item.category === category);
+            if (itemsInCategory.length === 0) return null;
+
+            return (
+              <div key={category} className="mb-8">
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">{category}</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {itemsInCategory.map((item) => (
+
+
+
+
+                    <div
+                      key={item.id}
+                      className="relative flex flex-row-reverse bg-white border border-gray-100 shadow-sm rounded-md items-stretch h-[140px] sm:h-[160px] w-full max-w-[400px] transition-all duration-200 hover:shadow-lg hover:scale-[1.02] cursor-pointer"
+                      onClick={() => handleEditClick(item)}
+                    >
+                      {/* Image */}
+                      <div className="w-[120px] sm:w-[140px] h-full relative">
+                        {item.photo_url ? (
+                          <img
+                            src={item.photo_url}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gray-100 flex items-center justify-center text-xs text-gray-500">
+                            No Image
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 h-full p-3 flex flex-col justify-between">
+                        {/* Top Right Icons */}
+                        <div className="flex justify-between items-start">
+                          <div className="flex gap-2 items-center">
+                            <span className="text-sm" title={`Spicy: ${item.spicy_level}`}>
+                              {item.spicy_level === "sweet" && "🧊"}
+                              {item.spicy_level === "mild" && "🌶️"}
+                              {item.spicy_level === "spicy" && "🌶️🌶️"}
+                            </span>
+                            <div
+                              className={`w-5 h-5 rounded-sm border flex items-center justify-center bg-white ${item.diet_type === "non-veg" ? "border-red-600" : "border-green-600"
+                                }`}
+                              title={item.diet_type}
+                            >
+                              {item.diet_type === "veg" && (
+                                <div className="w-2 h-2 rounded-full bg-green-600" />
+                              )}
+                              {item.diet_type === "non-veg" && (
+                                <div className="w-2 h-2 rounded-full bg-red-600" />
+                              )}
+                              {item.diet_type === "vegan" && (
+                                <div className="text-[10px] leading-none">🥦</div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Title and Description */}
+                        <div>
+                          <h3 className="text-sm sm:text-base font-semibold text-gray-800 truncate">
+                            {item.name}
+                          </h3>
+                          <p className="text-xs sm:text-sm text-gray-600 line-clamp-2 mt-0.5">
+                            {item.description}
+                          </p>
+                        </div>
+
+                        {/* Price & Metadata */}
+                        <div className="text-sm text-gray-700 flex items-center gap-2 mt-1">
+                          ₹{item.price}
+                          <span className="text-gray-400">|</span>
+                          {item.meal_type}
+                          <span className="text-gray-400">|</span>
+                          <span className="text-xs text-gray-500">Till {item.available_till}</span>
+                        </div>
+                      </div>
+                    </div>
+
+
+
+
+
+
+
+
+                  ))}
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            );
+          })}
+
+        </>
+
+
+
       )}
 
       {/* Infinite Scroll Trigger */}
       <div ref={loadMoreRef} className="h-10" />
 
       {/* Edit Dialog */}
-      <Dialog open={!!activeItem} onOpenChange={(open) => !open && setActiveItem(null)}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog open={!!activeItem} onOpenChange={(open) => setActiveItem(open ? activeItem : null)}>
+        <DialogTrigger asChild>
+          <div />
+        </DialogTrigger>
+        <DialogContent
+  className="sm:max-w-md w-full sm:rounded-lg rounded-none sm:h-auto h-[100vh] max-h-[100vh] overflow-y-auto"
+>
+
           <DialogHeader>
             <DialogTitle>Edit Menu Item</DialogTitle>
           </DialogHeader>
@@ -301,6 +412,51 @@ export default function CurrentMenu({ hotelId }: CurrentMenuProps) {
                   }
                 />
               </div>
+
+              {/* New Select for Spicy Level */}
+              <div className="space-y-2">
+                <Label>Spicy Level</Label>
+                <Select
+                  value={formValues.spicy_level}
+                  onValueChange={(value) =>
+                    setFormValues({ ...formValues, spicy_level: value })
+                  }
+                >
+                  <SelectTrigger className="w-full focus:outline-none focus:ring-0 focus:ring-offset-0">
+                    <SelectValue placeholder="Select Spicy Level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {spicyLevels.map((level) => (
+                      <SelectItem key={level} value={level}>
+                        {level.charAt(0).toUpperCase() + level.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* New Select for Diet Type */}
+              <div className="space-y-2">
+                <Label>Diet Type</Label>
+                <Select
+                  value={formValues.diet_type}
+                  onValueChange={(value) =>
+                    setFormValues({ ...formValues, diet_type: value })
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select Diet Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {dietTypes.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
 
               <div className="space-y-2">
                 <Label>Available Till</Label>

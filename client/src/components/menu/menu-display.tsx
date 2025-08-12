@@ -30,7 +30,7 @@ export default function MenuDisplay({ categories, currentTime }: MenuDisplayProp
               return (
                 <div 
                   key={item.id} 
-                  className={`bg-white rounded-xl shadow-lg overflow-hidden transform transition hover:scale-105 ${!isAvailable ? 'opacity-50' : ''}`}
+                  className={`bg-white rounded-xl shadow-lg transform transition hover:scale-105 ${!isAvailable ? 'opacity-50' : ''}`}
                 >
                   <div className="h-48 w-full bg-gray-200">
                     {item.photo_url ? (

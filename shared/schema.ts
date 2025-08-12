@@ -37,6 +37,8 @@ export const menuItems = pgTable("menu_items", {
   meal_type: text("meal_type").notNull(),
   available_till: text("available_till").notNull(),
   is_approved: boolean("is_approved").notNull().default(false),
+  spicy_level: text("spicy_level").notNull(), // values: 'sweet', 'mild', 'spicy'
+  diet_type: text("diet_type").notNull(),        // values: 'veg', 'non-veg', 'vegan'
 });
 
 // Menu Update Requests Table

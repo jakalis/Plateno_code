@@ -1,13 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import logo from "@/assets/logo_icon.svg";
+import { APP_NAME, SLOGAN, APP_BASE_URL} from "@/pages/constants";
 
 export default function PublicLayout({
   children,
   hotelId,
+    hotelName,
 }: {
   children: React.ReactNode;
   hotelId: string;
+    hotelName: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -34,23 +37,28 @@ export default function PublicLayout({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="relative flex items-center justify-between h-10">
             {/* Left: Logo */}
-            <div className="flex items-center">
-              <img
-                src={logo}
-                alt="Logo"
-                className="h-10 w-10 object-contain rounded-full border border-gray-300 shadow-sm"
-              />
-            </div>
+<div className="flex items-center">
+  <Link to={`/menu/${hotelId}`}>
+    <div className="h-10 w-10 rounded-full border border-gray-300 shadow-sm overflow-hidden flex items-center justify-center bg-white">
+      <img
+        src={logo}
+        alt="Logo"
+        className="h-8 w-8 object-contain"
+      />
+    </div>
+  </Link>
+</div>
 
             {/* Center - Title */}
-            <div className="text-center absolute left-1/2 transform -translate-x-1/2">
-              <h1
-                className="text-2xl sm:text-3xl md:text-4xl font-semibold text-gray-700 tracking-wide"
-                style={{ fontFamily: "'Playfair Display', serif" }}
-              >
-                Plateno
-              </h1>
-            </div>
+<div className="text-center absolute left-1/2 transform -translate-x-1/2">
+  <h3
+    className="text-lg sm:text-3xl font-semibold text-gray-700 tracking-wide"
+    style={{ fontFamily: "'Playfair Display', serif" }}
+  >
+    {hotelName}
+  </h3>
+</div>
+
 
             {/* Right: Dots Dropdown */}
             <div className="relative" ref={dropdownRef}>

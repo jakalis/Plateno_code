@@ -1,9 +1,14 @@
 import PublicLayout from "@/components/layouts/PublicLayout";
 import { useParams } from "wouter";
 import { useEffect, useState } from "react";
+import { Hotel } from "@shared/schema";
+import { useQuery } from "@tanstack/react-query";
 
 export default function ContactPage() {
     const { hotelId } = useParams();
+          const { data: hotel, isLoading: hotelLoading, error: hotelError } = useQuery<Hotel>({
+        queryKey: [`/api/hotels/${hotelId}`],
+      });
     const [contact, setContact] = useState<null | Record<string, string>>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -45,7 +50,7 @@ export default function ContactPage() {
     }, [hotelId]);
 
     return (
-<PublicLayout hotelId={hotelId!}>
+<PublicLayout hotelId={hotelId!} hotelName={hotel!.name}>
     <div className="p-6 max-w-2xl mx-auto">
     <div className="mb-10 text-center">
     <h2 className="text-4xl font-bold text-gray-800 mb-2">

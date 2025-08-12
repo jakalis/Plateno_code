@@ -183,7 +183,7 @@ export default function MenuRequests() {
         </div>
       </div>
 
-      <div className="bg-white shadow-sm rounded-lg overflow-hidden mb-6">
+      <div className="bg-white shadow-sm rounded-lg  mb-6">
         {filteredRequests.length === 0 ? (
           <div className="p-10 text-center text-gray-500">
             No pending requests at the moment.
@@ -199,7 +199,7 @@ export default function MenuRequests() {
                   <div className="flex flex-col sm:flex-row">
                     <div className="flex-1">
                       <div className="flex items-start">
-                        <div className="flex-shrink-0 h-16 w-16 rounded-md overflow-hidden bg-gray-200 flex items-center justify-center">
+                        <div className="flex-shrink-0 h-16 w-16 rounded-md   bg-gray-200 flex items-center justify-center">
                           {changes.photo_url ? (
                             <img
                               src={changes.photo_url}
@@ -227,23 +227,40 @@ export default function MenuRequests() {
                           <p className="mt-1 text-sm text-gray-500 line-clamp-2">
                             {changes.description}
                           </p>
-                          <div className="mt-1 flex items-center flex-wrap">
-                            <span className="text-sm font-medium text-gray-700">
-                              ₹{changes.price}
-                            </span>
-                            <span className="mx-2 text-gray-300">|</span>
-                            <span className="text-xs text-gray-500">
-                              {changes.category}
-                            </span>
-                            <span className="mx-2 text-gray-300">|</span>
-                            <span className="text-xs text-gray-500">
-                              {changes.meal_type}
-                            </span>
-                            <span className="mx-2 text-gray-300">|</span>
-                            <span className="text-xs text-gray-500">
-                              Available till {changes.available_till}
-                            </span>
+
+
+
+                          <div className="mt-1 flex items-center flex-wrap gap-x-2 text-xs text-gray-500">
+                            <span className="text-sm font-medium text-gray-700">₹{changes.price}</span>
+                            <span>|</span>
+                            <span>{changes.category}</span>
+                            <span>|</span>
+                            <span>{changes.meal_type}</span>
+                            <span>|</span>
+                            <span>Available till {changes.available_till}</span>
+
+                            {changes.spicy_level && (
+                              <>
+                                <span>|</span>
+                                <span className="flex items-center gap-1">
+                                  🌶️
+                                  <span className="capitalize">{changes.spicy_level}</span>
+                                </span>
+                              </>
+                            )}
+
+                            {changes.diet_type && (
+                              <>
+                                <span>|</span>
+                                <span className="capitalize">{changes.diet_type}</span>
+                              </>
+                            )}
                           </div>
+
+
+
+
+
                           <div className="mt-2 text-xs text-gray-500">
                             Submitted:{" "}
                             {format(

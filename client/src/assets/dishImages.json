@@ -1,0 +1,5 @@
+{
+  "pizza": "https://res.cloudinary.com/your-cloud-name/image/upload/v123/pizza.jpg",
+  "burger": "https://res.cloudinary.com/your-cloud-name/image/upload/v123/burger.jpg",
+  "pasta": "https://res.cloudinary.com/your-cloud-name/image/upload/v123/pasta.jpg"
+}

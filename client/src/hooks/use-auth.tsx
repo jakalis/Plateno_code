@@ -18,6 +18,8 @@ type RegisterData = {
   hotel_name?: string;
   hotel_description?: string;
   hotel_location?: string;
+  contact?: Record<string, string>;
+  service?: Record<string, string>;
 };
 
 type AuthContextType = {

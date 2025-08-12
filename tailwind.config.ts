@@ -1,4 +1,17 @@
 import type { Config } from "tailwindcss";
+import scrollbarHide from 'tailwind-scrollbar-hide';
+
+const config: Config = {
+  content: [
+    "./pages/**/*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
+    // Add other folders if needed
+  ],
+  theme: {
+    extend: {},
+  },
+    plugins: [scrollbarHide],
+}
 
 export default {
   darkMode: ["class"],

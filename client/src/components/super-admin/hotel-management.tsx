@@ -169,7 +169,7 @@ export default function HotelManagement() {
         </Button>
       </div>
 
-      <div className="bg-white shadow-sm rounded-lg overflow-hidden">
+      <div className="bg-white shadow-sm rounded-lg">
         {!hotels?.length ? (
           <div className="p-10 text-center text-gray-500">
             No hotels available. Add a new hotel to get started.

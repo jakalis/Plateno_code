@@ -76,7 +76,9 @@ async function main() {
         category TEXT NOT NULL,
         meal_type TEXT NOT NULL,
         available_till TEXT NOT NULL,
-        is_approved BOOLEAN NOT NULL DEFAULT false
+        is_approved BOOLEAN NOT NULL DEFAULT false,
+        spicy_level TEXT NOT NULL CHECK (spicy_level IN ('sweet', 'mild', 'spicy')),
+        diet_type TEXT NOT NULL CHECK (diet_type IN ('veg', 'non-veg', 'vegan'))
       );
     `);
     console.log("Created menu_items table");

@@ -1,5 +1,7 @@
 // Type definitions for the application
 
+import { TimestampFsp } from "drizzle-orm/mysql-core";
+
 export interface HotelOwner {
   id: string;
   name: string;
@@ -9,6 +11,7 @@ export interface HotelOwner {
   is_active: boolean;
   contact: unknown;
   service: unknown;
+  subscription_end_date: string;
 }
 
 export interface Subscription {

@@ -10,6 +10,22 @@ import { createOrder, verifyPaymentSignature } from "./razorpay";
 import { addDays, format } from "date-fns";
 import { setupCronJob, updateSubscriptionStatuses } from "./cron";
 import { v4 as uuidv4 } from 'uuid';
+import multer from "multer";
+import { v2 as cloudinary } from "cloudinary";
+import Fuse from "fuse.js";
+import dishDict from "./dishDict";
+
+
+
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME!,
+  api_key: process.env.CLOUDINARY_API_KEY!,
+  api_secret: process.env.CLOUDINARY_API_SECRET!,
+});
+const multerMemoryStorage = multer.memoryStorage();
+const upload = multer({storage: multerMemoryStorage });
+
 
 // Middleware to check if user is authenticated
 const isAuthenticated = (req: Request, res: Response, next: Function) => {
@@ -624,6 +640,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(500).json({ message: "Internal server error" });
       }
     });
+
+
+    app.post("/api/upload-image", upload.single("image"), async (req, res) => {
+      try {
+        const file = req.file;
+        if (!file) {
+          return res.status(400).json({ message: "No image provided" });
+        }
+    
+        const stream = cloudinary.uploader.upload_stream(
+          {
+            folder: "menu-photos",
+            resource_type: "image",
+          },
+          (error, result) => {
+            if (error || !result) {
+              console.error("Cloudinary error:", error);
+              return res.status(500).json({ message: "Cloudinary upload failed" });
+            }
+    
+            return res.status(200).json({
+              imageUrl: result.secure_url,
+              publicId: result.public_id,
+            });
+          }
+        );
+    
+        stream.end(file.buffer);
+      } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Upload failed" });
+      }
+    });
+    
+
+    // app.post("/api/search-image", async (req, res) => {
+    //   try {
+    //     const { query } = req.body;
+    
+    //     if (!query) {
+    //       return res.status(400).json({ message: "Query is required" });
+    //     }
+    
+    //     const result = await cloudinary.search
+    //       .expression(`folder:global-photos AND tags:${query}`)
+    //       .sort_by("public_id", "desc")
+    //       .max_results(2)
+    //       .execute();
+    //     // Send top 2 results
+    //     return res.status(200).json({
+    //       resources: result.resources.slice(0, 2).map((img:any) => ({
+    //         secure_url: img.secure_url,
+    //         public_id: img.public_id,
+    //       })),
+    //     });
+    //   } catch (err) {
+    //     console.error("Cloudinary search error:", err);
+    //     return res.status(500).json({ message: "Image search failed" });
+    //   }
+    // });
+    
+
+// const dishDict = require('./dishDict');
+
+const fuse = new Fuse<string>(Object.keys(dishDict), { threshold: 0.4 });
+
+
+app.post("/api/search-image", (req, res) => {
+  const { query } = req.body;
+  if (!query) return res.status(400).json({ message: "Query is required" });
+
+  // Search all dish names for fuzzy matches
+  const results = fuse.search(query.toLowerCase());
+
+  if (results.length === 0) {
+    return res.status(404).json({ message: "No matching dishes found" });
+  }
+
+const topMatches = results.slice(0, 2) as Array<{ item: string }>;
+
+const resources = topMatches.map(({ item }: { item: string }) => ({
+  secure_url: dishDict[item],
+  public_id: item,
+}));
+
+console.log(resources); 
+
+  return res.json({ resources });
+});
+
+
+
+
+
+
+
+
+
+
+
+    
+
 
 
   //  Subscription routes
