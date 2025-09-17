@@ -36,6 +36,15 @@ import {
   MdLocalDining
 } from "react-icons/md";
 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+
 
 
 export default function PublicMenuPage() {
@@ -45,6 +54,9 @@ export default function PublicMenuPage() {
   const [spicyLevelFilter, setSpicyLevelFilter] = useState<string>("all");
   const [dietTypeFilter, setDietTypeFilter] = useState<string>("all");
   const [cartOpen, setCartOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+const [guestName, setGuestName] = useState("");
+const [roomNumber, setRoomNumber] = useState("");
 
 const categoryIcons: Record<string, JSX.Element> = {
   all: <MdRestaurantMenu size={24} />,
@@ -130,6 +142,39 @@ const categoryIcons: Record<string, JSX.Element> = {
   }
 
   const categories = Array.from(new Set(menuItems?.map(item => item.category) || []));
+
+const handleSendWhatsApp = () => {
+  if (!guestName || !roomNumber) {
+    setConfirmOpen(true);
+    return;
+  }
+
+  const itemsText = cart
+    .map(item => `• ${item.name} × ${item.quantity}  –  ₹${item.price * item.quantity}`)
+    .join("\n");
+
+  const total = cart.reduce((t, i) => t + i.price * i.quantity, 0);
+
+const message = 
+`Room Service Order
+
+Name: ${guestName}
+Room: ${roomNumber}
+
+Items
+${cart.map(i => `• ${i.name} × ${i.quantity}  –  ₹${i.price * i.quantity}`).join("\n")}
+
+Total: ₹${total}
+
+——————————————
+Served with care by Plater — Good food, right to your room.`;
+
+
+  const phone = hotel.contact?.Restaurant ?? "";
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank");
+};
+
+
 
   const filteredMenuItems = (menuItems || []).filter(item => {
     const matchesMealType =
@@ -222,13 +267,76 @@ const categoryIcons: Record<string, JSX.Element> = {
                   </div>
                 </div>
 
-                <div className="pt-4 p-4 bg-yellow-100 text-yellow-800 text-sm rounded-lg text-center">
-                  📞 Dial <span className="font-semibold">{hotel.contact?.Restaurant || hotel.contact?.restaurant || "reception"}</span> from your room to order.
-                </div>
+          <div className="mt-6 space-y-4">
+            {/* 📞 Call Option */}
+            <div className="flex flex-col items-center bg-yellow-100 text-yellow-800 rounded-lg p-2 shadow-sm">
+              <p className="text-sm font-medium flex items-center gap-1">
+                📞 Dial <span className="font-semibold text-base">
+                  {hotel.contact?.Restaurant}
+                </span> from your room to order
+              </p>
+            </div>
+
+            {/* OR Divider */}
+            <div className="flex items-center justify-center">
+              <div className="flex-grow border-t border-gray-300"></div>
+              <span className="mx-3 text-gray-500 text-sm font-semibold">OR</span>
+              <div className="flex-grow border-t border-gray-300"></div>
+            </div>
+
+            {/* ✅ WhatsApp Button */}
+            <Button
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-medium shadow-md"
+              onClick={handleSendWhatsApp}
+            >
+              💬 Send on WhatsApp
+            </Button>
+          </div>
+
+
+
+
+
               </div>
             )}
           </SheetContent>
         </Sheet>
+
+
+        <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Confirm Your Stay</DialogTitle>
+    </DialogHeader>
+
+    <div className="space-y-4 mt-2">
+      <Input
+        placeholder="Your Name"
+        value={guestName}
+        onChange={(e) => setGuestName(e.target.value)}
+      />
+      <Input
+        placeholder="Room Number"
+        value={roomNumber}
+        onChange={(e) => setRoomNumber(e.target.value)}
+      />
+    </div>
+
+    <DialogFooter>
+      <Button
+        onClick={() => {
+          if (guestName && roomNumber) {
+            setConfirmOpen(false);
+            handleSendWhatsApp(); // re-invoke after user input
+          }
+        }}
+        className="bg-green-600 hover:bg-green-700 text-white"
+      >
+        Send
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
 
         <div className="max-w-7xl mx-auto px-0 sm:px-4 lg:px-8">
           {/* <div className="relative bg-gradient-to-r from-primary/10 to-transparent rounded-xl p-4 sm:p-6 md:p-8 mb-8   text-center">

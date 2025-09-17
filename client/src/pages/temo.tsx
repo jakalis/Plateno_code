@@ -1,414 +1,657 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/use-auth";
-import { Redirect } from "wouter";
-import { Hotel } from "@shared/schema";
-import { Button } from "@/components/ui/button";
-import { Loader2, LogOut } from "lucide-react";
-import ErrorBanner from "@/components/ui/error-banner";
-import CurrentMenu from "@/components/hotel-owner/current-menu";
-import PendingRequests from "@/components/hotel-owner/pending-requests";
-import AddMenuItem from "@/components/hotel-owner/add-menu-item";
-import QRCodeView from "@/components/hotel-owner/qr-code-view";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Subscription } from "@/lib/types";
-import SubscriptionStatus from "@/components/hotel-owner/subscription-status";
-import { parseISO, intervalToDuration, differenceInCalendarDays, Duration, format } from "date-fns";
-import logo from "@/assets/logo_icon.svg"; // For logo
-import current_menu from "@/assets/current_menu.svg";
-import add_menu from "@/assets/add_menu.svg";
-import pending_menu from "@/assets/pending_menu.svg";
-import hotel_information from "@/assets/hotel_information.svg";
-import membership from "@/assets/membership.svg";
-import qr from "@/assets/qr.svg";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { ArrowLeft } from "lucide-react";
-import { MoreVertical } from "lucide-react";
-import { APP_NAME, SLOGAN} from "@/pages/constants";
-
-function BackButton({ onClick }: { onClick: () => void }) {
-  return (
-    <div className="fixed bottom-4 left-4 z-50 pointer-events-none">
-      <button
-        onClick={onClick}
-        className="w-12 h-12 rounded-full bg-gray-200 text-gray-700 shadow-md hover:bg-gray-300 flex items-center justify-center transition-all pointer-events-auto"
-        aria-label="Back"
-      >
-        <ArrowLeft className="h-5 w-5" />
-      </button>
-    </div>
-  );
-}
 
 
-export default function HotelOwnerDashboard() {
-  const { user, logoutMutation } = useAuth();
-  const [activeTab, setActiveTab] = useState<null | string>(null);
-
-  const { data: hotel, isLoading, error } = useQuery<Hotel>({
-    queryKey: ['/api/my-hotel'],
-  });
-
-  if (!user || user.role !== "hotel_owner") {
-    return <Redirect to="/auth" />;
-  }
-
-  const hotelId = hotel?.id;
-  const endDate = hotel?.subscription_end_date;
-  const daysLeft = endDate ? differenceInCalendarDays(endDate, new Date()) : null;
-
-  const duration =
-    endDate && daysLeft !== null && daysLeft >= 0
-      ? intervalToDuration({ start: new Date(), end: endDate })
-      : null;
-
-  const formatDuration = (duration: Duration) => {
-    const parts = [];
-    if (duration.years) parts.push(`${duration.years} year${duration.years > 1 ? "s" : ""}`);
-    if (duration.months) parts.push(`${duration.months} month${duration.months > 1 ? "s" : ""}`);
-    if (duration.days) parts.push(`${duration.days} day${duration.days > 1 ? "s" : ""}`);
-    return parts.join(", ");
-  };
-
-  const remainingText = duration ? `${formatDuration(duration)} left` : "Unknown";
-
-  const { data: activeSubscription, isLoading: isLoadingSubscription, refetch: refetchSubscription } = useQuery<{ subscription: Subscription | null }>({
-    queryKey: [hotelId ? `/api/subscription/active/${hotelId}` : null],
-    enabled: !!hotelId,
-  });
-
-  const { data: subscriptionHistory, isLoading: isLoadingHistory, refetch: refetchHistory } = useQuery<Subscription[]>({
-    queryKey: [hotelId ? `/api/subscriptions/${hotelId}` : null],
-    enabled: !!hotelId,
-  });
-
-  const [open, setOpen] = useState(false);
-  const refreshData = () => {
-    refetchSubscription();
-    refetchHistory();
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (error || !hotel) {
-    return (
-      <div className="min-h-screen bg-slate-50 p-4">
-        <div className="max-w-7xl mx-auto">
-          <ErrorBanner
-            title="Error loading hotel data"
-            message={(error as Error)?.message || "Failed to load hotel data"}
-          />
-          <div className="mt-4 flex justify-end">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="w-10 h-10 rounded-full text-gray-900 hover:bg-gray-300 flex items-center justify-center"
-                >
-                  <MoreVertical className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => logoutMutation.mutate()}>
-                  Logout
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const handleCardClick = (tab: string) => {
-    setActiveTab(tab);
-  };
-
-  return (
-    <div className="min-h-screen bg-slate-50">
-
-
-
-      {/* NavBar */}
-      <nav className="bg-gray-100 shadow-md w-full">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="grid grid-cols-3 items-center w-full">
-
-            {/* Left - Logo */}
-            <div className="flex items-center">
-              <img
-                src={logo}
-                alt="Logo"
-                className="h-10 w-10 object-contain rounded-full border border-gray-300 shadow-sm"
-              />
-            </div>
-
-            {/* Center - Title */}
-            <div className="text-center">
-              <h1
-                className="text-2xl sm:text-3xl md:text-4xl font-semibold text-gray-700 md:text-gray-700 tracking-wide"
-                style={{ fontFamily: "'Playfair Display', serif" }}
-              >
-                {APP_NAME}
-              </h1>
-            </div>
-
-            {/* Right - Dropdown */}
-            <div className="flex justify-end">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="w-10 h-10 rounded-full text-gray-900 hover:bg-gray-300 border-none flex items-center justify-center"
-                  >
-                    <MoreVertical className="h-5 w-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => logoutMutation.mutate()}>
-                    Logout
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-          </div>
-        </div>
-      </nav>
-
-
-
-
-      <main className="pb-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {!hotel.is_active ? (
-            <>
-              <ErrorBanner
-                title="Subscription Expired"
-                message="Your subscription has expired. Please renew to access your menu dashboard."
-              />
-              <div className="p-6">
-                {isLoadingSubscription ? (
-                  <Skeleton className="h-40 w-full" />
-                ) : (
-                  <SubscriptionStatus
-                    hotelOwner={hotel}
-                    activeSubscription={activeSubscription?.subscription}
-                    onRefresh={refreshData}
-                  />
-                )}
-              </div>
-            </>
-          ) : (
-            <>
-              {!activeTab && (
-                <div className="mt-10 grid grid-cols-2 sm:grid-cols-3 gap-6 max-w-3xl mx-auto">
-                  <DashboardCard
-                    title="Current Menu"
-                    onClick={() => handleCardClick("currentMenu")}
-                    active={activeTab === "currentMenu"}
-                    imageSrc={current_menu}
-                  />
-                  <DashboardCard
-                    title="Pending Menu"
-                    onClick={() => handleCardClick("pendingRequests")}
-                    active={activeTab === "pendingRequests"}
-                    imageSrc={pending_menu}
-                  />
-                  <DashboardCard
-                    title="Add Menu"
-                    onClick={() => handleCardClick("addItem")}
-                    active={activeTab === "addItem"}
-                    imageSrc={add_menu}
-                  />
-                  <DashboardCard
-                    title="Hotel Information"
-                    onClick={() => handleCardClick("info")}
-                    active={activeTab === "info"}
-                    imageSrc={hotel_information}
-                  />
-                  <DashboardCard
-                    title="Membership"
-                    onClick={() => handleCardClick("subscription")}
-                    active={activeTab === "subscription"}
-                    imageSrc={membership}
-                  />
-                  <DashboardCard
-                    title="Show QR Code"
-                    onClick={() => handleCardClick("qr")}
-                    active={activeTab === "qr"}
-                    imageSrc={qr}
-                  />
-                </div>
-              )}
-
-              {activeTab === "currentMenu" && (
-                <>
-                  <BackButton onClick={() => setActiveTab(null)} />
-                  <CurrentMenu hotelId={hotelId!} />
-                </>
-              )}
-
-              {activeTab === "pendingRequests" && (
-                <>
-                  <BackButton onClick={() => setActiveTab(null)} />
-                  <PendingRequests hotelId={hotelId!} />
-                </>
-              )}
-
-              {activeTab === "addItem" && (
-                <>
-                  <BackButton onClick={() => setActiveTab(null)} />
-                  <AddMenuItem hotelId={hotelId!} onSuccess={() => setActiveTab("pendingRequests")} />
-                </>
-              )}
-
-              {activeTab === "info" && (
-                <>
-                  <BackButton onClick={() => setActiveTab(null)} />
-                  <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6 mt-6 space-y-6">
-
-                    {/* Title and Location */}
-                    <div className="text-center">
-                      <h2
-                        className="text-3xl font-semibold text-gray-800"
-                        style={{ fontFamily: "'Playfair Display', serif" }}
-                      >
-                        {hotel.name}
-                      </h2>
-                      <p className="text-sm text-gray-500 mt-1">{hotel.location}</p>
-                    </div>
-
-                    {/* Description */}
-                    {hotel.description && (
-                      <p className="text-base text-gray-600 leading-relaxed text-center max-w-2xl mx-auto">
-                        {hotel.description}
-                      </p>
-                    )}
-
-                    {/* Contact Details */}
-                    {hotel.contact && (
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-800 mb-4">📞 Contact Details</h3>
-                        <div className="bg-white shadow-md rounded-2xl p-6 border border-gray-100">
-
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            {Object.entries(hotel.contact).map(([key, value]) => (
-                              <div
-                                key={key}
-                                className="group p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors"
-                              >
-                                <div className="text-gray-500 text-sm capitalize">{key.replace(/_/g, ' ')}</div>
-                                <div className="text-gray-900 font-medium group-hover:underline">{value}</div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Services/Activities */}
-
-                    {hotel.service && (
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-800 mb-4">🏨 Hotel Services</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                          {Object.entries(hotel.service).map(([key, value]) => (
-                            <div
-                              key={key}
-                              className="relative bg-white shadow-md rounded-xl p-5 border border-gray-100 hover:shadow-lg hover:scale-[1.01] transition-transform"
-                            >
-                              <h4 className="text-md font-semibold text-gray-800 mb-2 capitalize text-center">
-                                {key.replace(/_/g, ' ')}
-                              </h4>
-                              <p className="text-sm text-gray-600 leading-relaxed text-center">
-                                {value}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+// const dishDict: Record<string, string> = {
+//   "paneer pyaza": "https://res.cloudinary.com/dxnwguqtd/image/upload/v1753189879/Paneer-Do-Pyaza-2-3_konl7d.jpg",
+//   "paneer makhni": "https://res.cloudinary.com/dxnwguqtd/image/upload/v1753189817/paneer-butter-masala-recipe_yeumfs.webp",
+//   "Paneer Tikka": "",
+//   "Hara Bhara Kabab": "",
+//   "Veg Cutlet": "",
+//   "Spring Roll": "",
+//   "Stuffed Mushrooms": "",
+//   "Chicken Tikka": "",
+//   "Malai Tikka": "",
+//   "Fish Tikka": "",
+//   "Mutton Seekh Kebab": "",
+//   "Chilli Paneer Dry": "",
+//   "Chilli Chicken": "",
+//   "Gobi Manchurian": "",
+//   "Nachos with Cheese": "",
+//   "Tomato Soup": "",
+//   "Sweet Corn Soup": "",
+//   "Hot & Sour Veg Soup": "",
+//   "Manchow Soup": "",
+//   "Clear Soup": "",
+//   "Chicken Sweet Corn Soup": "",
+//   "Chicken Hot & Sour Soup": "",
+//   "Mutton Soup": "",
+//   "Rasam": "",
+//   "Green Salad": "",
+//   "Cucumber Salad": "",
+//   "Onion & Lemon Salad": "",
+//   "Kachumber Salad": "",
+//   "Russian Salad": "",
+//   "Caesar Salad (Veg/Non-Veg)": "",
+//   "Sprouts Salad": "",
+//   "Paneer Butter Masala": "",
+//   "Kadai Paneer": "",
+//   "Shahi Paneer": "",
+//   "Palak Paneer": "",
+//   "Dal Makhani": "",
+//   "Dal Tadka": "",
+//   "Veg Kofta Curry": "",
+//   "Chole Masala": "",
+//   "Rajma Masala": "",
+//   "Bhindi Masala": "",
+//   "Baingan Bharta": "",
+//   "Mix Veg Curry": "",
+//   "Butter Chicken": "",
+//   "Chicken Korma": "",
+//   "Chicken Do Pyaza": "",
+//   "Chicken Chettinad": "",
+//   "Mutton Rogan Josh": "",
+//   "Egg Curry": "",
+//   "Fish Curry": "",
+//   "Prawn Curry": "",
+//   "Paneer Lababdar": "",
+//   "Paneer Pasanda": "",
+//   "Malai Kofta": "",
+//   "Aloo Gobi": "",
+//   "Mutter Paneer": "",
+//   "Chicken Tikka Masala": "",
+//   "Chicken Handi": "",
+//   "Hyderabadi Mutton Curry": "",
+//   "Goan Fish Curry": "",
+//   "Prawn Masala Curry": "",
+//   "Tandoori Roti": "",
+//   "Butter Roti": "",
+//   "Plain Naan (//Garlic)": "",
+//   "Butter Naan": "",
+//   "Garlic Naan": "",
+//   "Lachha Paratha": "",
+//   "Aloo Paratha": "",
+//   "Paneer Paratha": "",
+//   "Amritsari Kulcha": "",
+//   "Roomali Roti": "",
+//   "Poori": "",
+//   "Chapati": "",
+//   "Steamed Rice": "",
+//   "Jeera Rice": "",
+//   "Veg Pulao": "",
+//   "Peas Pulao": "",
+//   "Veg Biryani": "",
+//   "Chicken Biryani": "",
+//   "Mutton Biryani": "",
+//   "Hyderabadi Dum Biryani": "",
+//   "Egg Biryani": "",
+//   "Fish Biryani": "",
+//   "Curd Rice": "",
+//   "Lemon Rice": "",
+//   "Tamarind Rice": "",
+//   "Veg Fried Rice": "",
+//   "Chicken Fried Rice": "",
+//   "Egg Fried Rice": "",
+//   "Veg Hakka Noodles": "",
+//   "Schezwan Veg Noodles": "",
+//   "Chicken Hakka Noodles": "",
+//   "Schezwan Chicken Noodles": "",
+//   "Egg Noodles": "",
+//   "Singapore Noodles": "",
+//   "American Chopsuey": "",
+//   "Paneer Tikka (BBQ style)": "",
+//   "Soya Chaap Tikka": "",
+//   "Tandoori Chicken": "",
+//   "Chicken Seekh Kebab": "",
+//   "Reshmi Kebab": "",
+//   "Afghani Chicken": "",
+//   "Mutton Seekh Kebab": "",
+//   "Fish Tikka (Tandoor)": "",
+//   "Prawns Tandoori": "",
+//   "Margherita Pizza": "",
+//   "Farmhouse Pizza": "",
+//   "Paneer Tikka Pizza": "",
+//   "Veggie Delight Pizza": "",
+//   "Chicken Tikka Pizza": "",
+//   "BBQ Chicken Pizza": "",
+//   "Pepperoni Pizza": "",
+//   "Veg Burger": "",
+//   "Paneer Burger": "",
+//   "Aloo Tikki Burger": "",
+//   "Chicken Burger": "",
+//   "Double Cheese Chicken Burger": "",
+//   "Fish Burger": "",
+//   "Fish Fry (Pomfret/Surmai)": "",
+//   "Tandoori Fish": "",
+//   "Fish Curry (Goan Style / Kerala Style)": "",
+//   "Prawn Masala": "",
+//   "Prawn Fry": "",
+//   "Crab Curry": "",
+//   "Lobster Masala": "",
+//   "Gulab Jamun": "",
+//   "Rasgulla": "",
+//   "Rasmalai": "",
+//   "Jalebi": "",
+//   "Kheer": "",
+//   "Phirni": "",
+//   "Gajar Halwa": "",
+//   "Moong Dal Halwa": "",
+//   "Ice Cream Vanilla": "",
+//   "Ice Cream Chocolate": "",
+//   "Ice Cream Butterscotch": "",
+//   "Kulfi Malai": "",
+//   "Kulfi Pista": "",
+//   "Kulfi Mango": "",
+//   "Brownie with Ice Cream": "",
+//   "Cheesecake": "",
+//   "Pastries": "",
+//   "Fresh Lime Soda (Sweet/Salt)": "",
+//   "Cold Drink (Coke, Pepsi, etc.)": "",
+//   "Orange Juices": "",
+//   "Pineapple Juices": "",
+//   "Watermelon Juices": "",
+//   "Mosambi Juices": "",
+//   "Lassi Sweet": "",
+//   "Lassi Salted": "",
+//   "Lassi Mango": "",
+//   "Buttermilk Chaas": "",
+//   "Jaljeera": "",
+//   "Virgin Mojito": "",
+//   "Blue Lagoon": "",
+//   "Chocolate Milkshakes": "",
+//   "Strawberry Milkshakes": "",
+//   "Banana Milkshakes": "",
+//   "Filter Coffee (South Indian Style)": "",
+//   "Espresso": "",
+//   "Cappuccino": "",
+//   "Latte": "",
+//   "Cold Coffee": "",
+//   "Mocha": "",
+//   "Tea": "",
+//   "Papad Roasted": "",
+//   "Papad Fried": "",
+//   "Papad Masala": "",
+//   "Pickles (Achar)": "",
+//   "Boondi Raita": "",
+//   "Onion Raita": "",
+//   "Cucumber Raita": "",
+//   "Pineapple Raita": "",
+//   "French Fries": "",
+//   "Masala Fries": "",
+//   "Garlic Bread": "",
+//   "Cheese Garlic Bread": "",
+//   "Veg Thali": "",
+//   "Special Thali": "",
+//   "Non-Veg Thali": "",
+//   "Idli": "",
+//   "Plain Dosa": "",
+//   "Masala Dosa": "",
+//   "Rava Dosa": "",
+//   "Mysore Dosa": "",
+//   "Uttapam": "",
+//   "Vada": "",
+//   "Vada Pav": "",
+//   "Pav Bhaji": "",
+//   "Pani Puri": "",
+//   "Bhel Puri": "",
+//   "Sev Puri": "",
+//   "Dahi Puri": "",
+//   "Veg Sandwich": "",
+//   "Club Sandwich": "",
+//   "Grilled Sandwich": "",
+//   "Chicken Sandwich": ""
+// };
 
 
 
-                  </div>
-                </>
-              )}
 
 
-              {activeTab === "subscription" && (
-                <>
-                  <BackButton onClick={() => setActiveTab(null)} />
-                  <div className="mt-6">
-                    {isLoadingSubscription ? (
-                      <Skeleton className="h-40 w-full" />
-                    ) : (
-                      <SubscriptionStatus
-                        hotelOwner={hotel}
-                        activeSubscription={activeSubscription?.subscription}
-                        onRefresh={refreshData}
-                      />
-                    )}
-                  </div>
-                </>
-              )}
 
-              {activeTab === "qr" && (
-                <>
-                  <BackButton onClick={() => setActiveTab(null)} />
-                  <div className="mt-6">
-                    <QRCodeView hotelId={hotel.id} qrCodeUrl={hotel.qr_code_url} />
-                  </div>
-                </>
-              )}
-            </>
-          )}
-        </div>
-      </main>
-    </div>
-  );
-}
 
-function DashboardCard({
-  title,
-  onClick,
-  active,
-  imageSrc,   // new optional prop
-}: {
-  title: string;
-  onClick: () => void;
-  active?: boolean;
-  imageSrc?: string;
-}) {
-  return (
-    <div
-      onClick={onClick}
-      className={`cursor-pointer rounded-2xl border px-6 py-8 text-center font-semibold shadow-sm transition duration-200
-        ${active ? "bg-gray-900 text-white shadow-md" : "bg-white text-gray-800 hover:bg-gray-100 hover:shadow-md"}
-      `}
-    >
-      {imageSrc && (
-        <img
-          src={imageSrc}
-          alt={title}
-          className="mx-auto mb-4 w-12 sm:w-16 md:w-20 h-auto object-contain max-h-24"
-        />
-      )}
-      <h3 className="text-sm sm:text-base text-gray-600 font-medium">{title}</h3>
-    </div>
-  );
-}
+
+
+
+// const dishDict: Record<string, string> = {
+//   "paneer pyaza": "https://res.cloudinary.com/dxnwguqtd/image/upload/v1753189879/Paneer-Do-Pyaza-2-3_konl7d.jpg",
+//   "paneer makhni": "https://res.cloudinary.com/dxnwguqtd/image/upload/v1753189817/paneer-butter-masala-recipe_yeumfs.webp",
+//   "paneer-tikka": "",
+//   "hara-bhara-kabab": "",
+//   "veg-cutlet": "",
+//   "spring-roll": "",
+//   "stuffed-mushrooms": "",
+//   "chicken-tikka": "",
+//   "malai-tikka": "",
+//   "fish-tikka": "",
+//   "mutton-seekh-kebab": "",
+//   "chilli-paneer-dry": "",
+//   "chilli-chicken": "",
+//   "gobi-manchurian": "",
+//   "french-fries": "",
+//   "nachos-with-cheese": "",
+//   "tomato-soup": "",
+//   "sweet-corn-soup": "",
+//   "hot-sour-veg-soup": "",
+//   "manchow-soup": "",
+//   "clear-soup": "",
+//   "chicken-sweet-corn-soup": "",
+//   "chicken-hot-sour-soup": "",
+//   "mutton-soup": "",
+//   "rasam": "",
+//   "green-salad": "",
+//   "cucumber-salad": "",
+//   "onion-lemon-salad": "",
+//   "kachumber-salad": "",
+//   "russian-salad": "",
+//   "caesar-salad-veg-non-veg": "",
+//   "sprouts-salad": "",
+//   "paneer-butter-masala": "",
+//   "kadai-paneer": "",
+//   "shahi-paneer": "",
+//   "palak-paneer": "",
+//   "dal-makhani": "",
+//   "dal-tadka": "",
+//   "veg-kofta-curry": "",
+//   "chole-masala": "",
+//   "rajma-masala": "",
+//   "bhindi-masala": "",
+//   "baingan-bharta": "",
+//   "mix-veg-curry": "",
+//   "butter-chicken": "",
+//   "chicken-korma": "",
+//   "chicken-do-pyaza": "",
+//   "chicken-chettinad": "",
+//   "mutton-rogan-josh": "",
+//   "egg-curry": "",
+//   "fish-curry": "",
+//   "prawn-curry": "",
+//   "paneer-lababdar": "",
+//   "paneer-pasanda": "",
+//   "malai-kofta": "",
+//   "aloo-gobi": "",
+//   "mutter-paneer": "",
+//   "chicken-tikka-masala": "",
+//   "chicken-handi": "",
+//   "hyderabadi-mutton-curry": "",
+//   "goan-fish-curry": "",
+//   "prawn-masala-curry": "",
+//   "tandoori-roti": "",
+//   "butter-roti": "",
+//   "plain-naan-garlic": "",
+//   "butter-naan": "",
+//   "garlic-naan": "",
+//   "lachha-paratha": "",
+//   "aloo-paratha": "",
+//   "paneer-paratha": "",
+//   "amritsari-kulcha": "",
+//   "roomali-roti": "",
+//   "poori": "",
+//   "chapati": "",
+//   "steamed-rice": "",
+//   "jeera-rice": "",
+//   "veg-pulao": "",
+//   "peas-pulao": "",
+//   "veg-biryani": "",
+//   "chicken-biryani": "",
+//   "mutton-biryani": "",
+//   "hyderabadi-dum-biryani": "",
+//   "egg-biryani": "",
+//   "fish-biryani": "",
+//   "curd-rice": "",
+//   "lemon-rice": "",
+//   "tamarind-rice": "",
+//   "veg-fried-rice": "",
+//   "chicken-fried-rice": "",
+//   "egg-fried-rice": "",
+//   "veg-hakka-noodles": "",
+//   "schezwan-veg-noodles": "",
+//   "chicken-hakka-noodles": "",
+//   "schezwan-chicken-noodles": "",
+//   "egg-noodles": "",
+//   "singapore-noodles": "",
+//   "american-chopsuey": "",
+//   "paneer-tikka-bbq-style": "",
+//   "soya-chaap-tikka": "",
+//   "tandoori-chicken": "",
+//   "chicken-seekh-kebab": "",
+//   "reshmi-kebab": "",
+//   "afghani-chicken": "",
+//   "fish-tikka-tandoor": "",
+//   "prawns-tandoori": "",
+//   "margherita-pizza": "",
+//   "farmhouse-pizza": "",
+//   "paneer-tikka-pizza": "",
+//   "veggie-delight-pizza": "",
+//   "chicken-tikka-pizza": "",
+//   "bbq-chicken-pizza": "",
+//   "pepperoni-pizza": "",
+//   "veg-burger": "",
+//   "paneer-burger": "",
+//   "aloo-tikki-burger": "",
+//   "chicken-burger": "",
+//   "double-cheese-chicken-burger": "",
+//   "fish-burger": "",
+//   "fish-fry-pomfret-surmai": "",
+//   "tandoori-fish": "",
+//   "fish-curry-goan-kerala-style": "",
+//   "prawn-masala": "",
+//   "prawn-fry": "",
+//   "crab-curry": "",
+//   "lobster-masala": "",
+//   "gulab-jamun": "",
+//   "rasgulla": "",
+//   "rasmalai": "",
+//   "jalebi": "",
+//   "kheer": "",
+//   "phirni": "",
+//   "gajar-halwa": "",
+//   "moong-dal-halwa": "",
+//   "ice-cream-vanilla": "",
+//   "ice-cream-chocolate": "",
+//   "ice-cream-butterscotch": "",
+//   "kulfi-malai": "",
+//   "kulfi-pista": "",
+//   "kulfi-mango": "",
+//   "brownie-with-ice-cream": "",
+//   "cheesecake": "",
+//   "pastries": "",
+//   "fresh-lime-soda-sweet-salt": "",
+//   "cold-drink-coke-pepsi": "",
+//   "orange-juices": "",
+//   "pineapple-juices": "",
+//   "watermelon-juices": "",
+//   "mosambi-juices": "",
+//   "lassi-sweet": "",
+//   "lassi-salted": "",
+//   "lassi-mango": "",
+//   "buttermilk-chaas": "",
+//   "jaljeera": "",
+//   "virgin-mojito": "",
+//   "blue-lagoon": "",
+//   "chocolate-milkshakes": "",
+//   "strawberry-milkshakes": "",
+//   "banana-milkshakes": "",
+//   "filter-coffee-south-indian-style": "",
+//   "espresso": "",
+//   "cappuccino": "",
+//   "latte": "",
+//   "cold-coffee": "",
+//   "mocha": "",
+//   "tea": "",
+//   "papad-roasted": "",
+//   "papad-fried": "",
+//   "papad-masala": "",
+//   "pickles-achar": "",
+//   "boondi-raita": "",
+//   "onion-raita": "",
+//   "cucumber-raita": "",
+//   "pineapple-raita": "",
+//   "french-fries-side": "",
+//   "masala-fries": "",
+//   "garlic-bread": "",
+//   "cheese-garlic-bread": "",
+//   "veg-thali": "",
+//   "special-thali": "",
+//   "non-veg-thali": "",
+//   "idli": "",
+//   "plain-dosa": "",
+//   "masala-dosa": "",
+//   "rava-dosa": "",
+//   "mysore-dosa": "",
+//   "uttapam": "",
+//   "vada": "",
+//   "vada-pav": "",
+//   "pav-bhaji": "",
+//   "pani-puri": "",
+//   "bhel-puri": "",
+//   "sev-puri": "",
+//   "dahi-puri": "",
+//   "veg-sandwich": "",
+//   "club-sandwich": "",
+//   "grilled-sandwich": "",
+//   "chicken-sandwich": ""
+// };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// {
+//   "starters": [
+//     "Paneer Tikka",
+//     "Hara Bhara Kabab",
+//     "Veg Cutlet",
+//     "Spring Roll",
+//     "Stuffed Mushrooms",
+//     "Chicken Tikka",
+//     "Malai Tikka",
+//     "Fish Tikka",
+//     "Mutton Seekh Kebab",
+//     "Chilli Paneer Dry",
+//     "Chilli Chicken",
+//     "Gobi Manchurian",
+//     "French Fries",
+//     "Nachos with Cheese"
+//   ],
+//   "soup": [
+//     "Tomato Soup",
+//     "Sweet Corn Soup",
+//     "Hot & Sour Veg Soup",
+//     "Manchow Soup",
+//     "Clear Soup",
+//     "Chicken Sweet Corn Soup",
+//     "Chicken Hot & Sour Soup",
+//     "Mutton Soup",
+//     "Rasam"
+//   ],
+//   "salad": [
+//     "Green Salad",
+//     "Cucumber Salad",
+//     "Onion & Lemon Salad",
+//     "Kachumber Salad",
+//     "Russian Salad",
+//     "Caesar Salad (Veg/Non-Veg)",
+//     "Sprouts Salad"
+//   ],
+//   "mains": [
+//     "Paneer Butter Masala",
+//     "Kadai Paneer",
+//     "Shahi Paneer",
+//     "Palak Paneer",
+//     "Dal Makhani",
+//     "Dal Tadka",
+//     "Veg Kofta Curry",
+//     "Chole Masala",
+//     "Rajma Masala",
+//     "Bhindi Masala",
+//     "Baingan Bharta",
+//     "Mix Veg Curry",
+//     "Butter Chicken",
+//     "Chicken Korma",
+//     "Chicken Do Pyaza",
+//     "Chicken Chettinad",
+//     "Mutton Rogan Josh",
+//     "Egg Curry",
+//     "Fish Curry",
+//     "Prawn Curry"
+//   ],
+//   "curry": [
+//     "Paneer Lababdar",
+//     "Paneer Pasanda",
+//     "Malai Kofta",
+//     "Aloo Gobi",
+//     "Mutter Paneer",
+//     "Chicken Tikka Masala",
+//     "Chicken Handi",
+//     "Hyderabadi Mutton Curry",
+//     "Goan Fish Curry",
+//     "Prawn Masala Curry"
+//   ],
+//   "bread": [
+//     "Tandoori Roti",
+//     "Butter Roti",
+//     "Plain Naan (//Garlic)",
+//      "Butter Naan",
+//      "Garlic Naan",
+//     "Lachha Paratha",
+//     "Aloo Paratha",
+//     "Paneer Paratha",
+//     "Amritsari Kulcha",
+//     "Roomali Roti",
+//     "Poori",
+//     "Chapati"
+//   ],
+//   "rice": [
+//     "Steamed Rice",
+//     "Jeera Rice",
+//     "Veg Pulao",
+//     "Peas Pulao",
+//     "Veg Biryani",
+//     "Chicken Biryani",
+//     "Mutton Biryani",
+//     "Hyderabadi Dum Biryani",
+//     "Egg Biryani",
+//     "Fish Biryani",
+//     "Curd Rice",
+//     "Lemon Rice",
+//     "Tamarind Rice",
+//     "Veg Fried Rice",
+//     "Chicken Fried Rice",
+//     "Egg Fried Rice"
+//   ],
+//   "noodles": [
+//     "Veg Hakka Noodles",
+//     "Schezwan Veg Noodles",
+//     "Chicken Hakka Noodles",
+//     "Schezwan Chicken Noodles",
+//     "Egg Noodles",
+//     "Singapore Noodles",
+//     "American Chopsuey"
+//   ],
+//   "bbq": [
+//     "Paneer Tikka (BBQ style)",
+//     "Soya Chaap Tikka",
+//     "Tandoori Chicken",
+//     "Chicken Seekh Kebab",
+//     "Reshmi Kebab",
+//     "Afghani Chicken",
+//     "Mutton Seekh Kebab",
+//     "Fish Tikka (Tandoor)",
+//     "Prawns Tandoori"
+//   ],
+//   "pizza": [
+//     "Margherita Pizza",
+//     "Farmhouse Pizza",
+//     "Paneer Tikka Pizza",
+//     "Veggie Delight Pizza",
+//     "Chicken Tikka Pizza",
+//     "BBQ Chicken Pizza",
+//     "Pepperoni Pizza"
+//   ],
+//   "burger": [
+//     "Veg Burger",
+//     "Paneer Burger",
+//     "Aloo Tikki Burger",
+//     "Chicken Burger",
+//     "Double Cheese Chicken Burger",
+//     "Fish Burger"
+//   ],
+//   "seafood": [
+//     "Fish Fry (Pomfret/Surmai)",
+//     "Tandoori Fish",
+//     "Fish Curry (Goan Style / Kerala Style)",
+//     "Prawn Masala",
+//     "Prawn Fry",
+//     "Crab Curry",
+//     "Lobster Masala"
+//   ],
+//   "desserts": [
+//     "Gulab Jamun",
+//     "Rasgulla",
+//     "Rasmalai",
+//     "Jalebi",
+//     "Kheer",
+//     "Phirni",
+//     "Gajar Halwa",
+//     "Moong Dal Halwa",
+//     "Ice Cream Vanilla",
+//     "Ice Cream Chocolate",
+//     "Ice Cream Butterscotch",
+//     "Kulfi Malai",
+//     "Kulfi Pista",
+//     "Kulfi Mango",
+//     "Brownie with Ice Cream",
+//     "Cheesecake",
+//     "Pastries"
+//   ],
+//   "drinks": [
+//     "Fresh Lime Soda (Sweet/Salt)",
+//     "Cold Drink (Coke, Pepsi, etc.)",
+//     "Orange Juices",
+//     "Pineapple Juices",
+//     "Watermelon Juices",
+//     "Mosambi Juices",
+//     "Lassi Sweet",
+//     "Lassi Salted",
+//     "Lassi Mango",
+//     "Buttermilk Chaas",
+//     "Jaljeera",
+//     "Virgin Mojito",
+//     "Blue Lagoon",
+//     "Chocolate Milkshakes",
+//     "Strawberry Milkshakes",
+//     "Banana Milkshakes"
+//   ],
+//   "coffee": [
+//     "Filter Coffee (South Indian Style)",
+//     "Espresso",
+//     "Cappuccino",
+//     "Latte",
+//     "Cold Coffee",
+//     "Mocha",
+//     "Tea"
+//   ],
+//   "sides": [
+//     "Papad Roasted",
+//     "Papad Fried",
+//     "Papad Masala",
+//     "Pickles (Achar)",
+//     "Boondi Raita",
+//     "Onion Raita",
+//     "Cucumber Raita",
+//     "Pineapple Raita",
+//     "French Fries",
+//     "Masala Fries",
+//     "Garlic Bread",
+//     "Cheese Garlic Bread"
+//   ],
+//   "other": [
+//     "Veg Thali",
+//     "Special Thali",
+//     "Non-Veg Thali",
+//     "Idli",
+//     "Plain Dosa",
+//     "Masala Dosa",
+//     "Rava Dosa",
+//     "Mysore Dosa",
+//     "Uttapam",
+//     "Vada",
+//     "Vada Pav",
+//     "Pav Bhaji",
+//     "Pani Puri",
+//     "Bhel Puri",
+//     "Sev Puri",
+//     "Dahi Puri",
+//     "Veg Sandwich",
+//     "Club Sandwich",
+//     "Grilled Sandwich",
+//     "Chicken Sandwich"
+//   ]
+// }

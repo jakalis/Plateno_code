@@ -1,11 +1,10 @@
 import "dotenv/config";
-import { drizzle } from "drizzle-orm/neon-serverless";
-import { migrate } from "drizzle-orm/neon-serverless/migrator";
-import { Pool, neonConfig } from "@neondatabase/serverless";
-import ws from "ws";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
+import pkg from "pg";
 import * as schema from "@shared/schema";
 
-neonConfig.webSocketConstructor = ws;
+const { Pool } = pkg;
 
 // Check if DATABASE_URL is set
 if (!process.env.DATABASE_URL) {
@@ -14,29 +13,18 @@ if (!process.env.DATABASE_URL) {
 
 async function main() {
   console.log("Starting database migration...");
-  
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+      rejectUnauthorized: true,
+      ca: process.env.SSL_CERT_PATH // or fs.readFileSync if you want to load $HOME/.postgresql/root.crt
+    }
+  });
+
   const db = drizzle(pool, { schema });
-  
-  // Create schema
+
   try {
-
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS subscriptions (
-        id TEXT PRIMARY KEY,
-        hotel_owner_id UUID NOT NULL REFERENCES hotels(id),
-        plan_type TEXT NOT NULL,
-        start_date TEXT NOT NULL,
-        end_date TEXT NOT NULL,
-        razorpay_order_id TEXT NOT NULL,
-        payment_status TEXT NOT NULL,
-        amount TEXT NOT NULL,
-        created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-      );
-    `);
-    console.log("Created subscription table");
-
-    // Create hotels table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS hotels (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -51,8 +39,7 @@ async function main() {
       );
     `);
     console.log("Created hotels table");
-    
-    // Create users table
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -63,8 +50,7 @@ async function main() {
       );
     `);
     console.log("Created users table");
-    
-    // Create menu_items table
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS menu_items (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -82,8 +68,7 @@ async function main() {
       );
     `);
     console.log("Created menu_items table");
-    
-    // Create menu_update_requests table
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS menu_update_requests (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -95,6 +80,22 @@ async function main() {
       );
     `);
     console.log("Created menu_update_requests table");
+
+      await pool.query(`
+      CREATE TABLE IF NOT EXISTS subscriptions (
+        id TEXT PRIMARY KEY,
+        hotel_owner_id UUID NOT NULL REFERENCES hotels(id),
+        plan_type TEXT NOT NULL,
+        start_date TEXT NOT NULL,
+        end_date TEXT NOT NULL,
+        razorpay_order_id TEXT NOT NULL,
+        payment_status TEXT NOT NULL,
+        amount TEXT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+      );
+    `);
+    console.log("Created subscription table");
+
     console.log("Migration completed successfully");
   } catch (error) {
     console.error("Migration failed:", error);

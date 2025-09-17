@@ -704,28 +704,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 // const dishDict = require('./dishDict');
 
-const fuse = new Fuse<string>(Object.keys(dishDict), { threshold: 0.4 });
 
 
+
+// const fuse = new Fuse<string>(Object.keys(dishDict), {
+//   threshold: 0.1,       // stricter matching
+//   includeScore: true,   // gives you scores
+//   ignoreLocation: true, // don’t penalize based on word position
+//   distance: 100         // smaller distance = closer matches are ranked higher
+// });
+
+// app.post("/api/search-image", (req, res) => {
+//   const { query } = req.body;
+//   if (!query) return res.status(400).json({ message: "Query is required" });
+
+//   const results = fuse.search(query.toLowerCase());
+
+//   console.log("Search results:", results);
+
+//   if (results.length === 0) {
+//     return res.status(404).json({ message: "No matching dishes found" });
+//   }
+
+//   // Fuse is already sorted → just map items
+//   const topMatches = results.slice(0, 2).map(r => r.item);
+
+//   const resources = topMatches.map(item => ({
+//     secure_url: dishDict[item],
+//     public_id: item,
+//   }));
+
+
+
+//   return res.json({ resources });
+// });
+
+
+
+
+
+
+
+
+const fuse = new Fuse<string>(Object.keys(dishDict), { 
+  threshold: 0.1,
+  includeScore: true 
+});
 app.post("/api/search-image", (req, res) => {
   const { query } = req.body;
   if (!query) return res.status(400).json({ message: "Query is required" });
 
-  // Search all dish names for fuzzy matches
-  const results = fuse.search(query.toLowerCase());
+// console.log("Received search query:", query);
 
-  if (results.length === 0) {
+const results = fuse.search(query.toLowerCase());
+
+const sortedResults = results
+  .sort((a, b) => {
+    if (a.score === b.score) {
+      return a.item.length - b.item.length; // shorter name first
+    }
+    return a.score! - b.score!; // lower score first
+  })
+  .map(r => r.item); // extract just the item string
+
+
+  if (sortedResults.length === 0) {
     return res.status(404).json({ message: "No matching dishes found" });
   }
 
-const topMatches = results.slice(0, 2) as Array<{ item: string }>;
+// console.log(sortedResults);
 
-const resources = topMatches.map(({ item }: { item: string }) => ({
+const topMatches = sortedResults.slice(0, 2);
+const resources = topMatches.map(item => ({
   secure_url: dishDict[item],
   public_id: item,
 }));
 
-console.log(resources); 
+
+// console.log(resources); 
 
   return res.json({ resources });
 });

@@ -90,7 +90,7 @@ export class DatabaseStorage implements IStorage {
     const PostgresStore = connectPg(session);
     this.sessionStore = new PostgresStore({
       pool,
-      createTableIfMissing: true,
+      createTableIfMissing: false,
     });
 
     // Create the super admin user (only if it doesn't exist)

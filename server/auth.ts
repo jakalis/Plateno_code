@@ -57,11 +57,11 @@ export function setupAuth(app: Express) {
         try {
           const user = await storage.getUserByEmail(email);
           if (!user) {
-            return done(null, false, { message: "Invalid email or password" });
+            return done(null, false, { message: "Invalid email" });
           }
           
           if (!(await comparePasswords(password, user.password))) {
-            return done(null, false, { message: "Invalid email or password" });
+            return done(null, false, { message: "Invalid password" });
           }
           
           return done(null, user);

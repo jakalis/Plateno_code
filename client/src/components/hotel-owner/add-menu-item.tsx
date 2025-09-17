@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -22,6 +22,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Command, CommandInput, CommandList, CommandItem } from "@/components/ui/command"
+
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import Cropper from "react-easy-crop";
@@ -32,7 +34,8 @@ import imageCompression from 'browser-image-compression';
 import PhotoSearch from "@/pages/photo-search"
 import axios from "axios";
 import { Upload } from "lucide-react";
-
+import Fuse from "fuse.js";
+import { useMemo } from "react";
 
 const schema = z.object({
   name: z.string().min(1, "Dish name is required"),
@@ -41,7 +44,7 @@ const schema = z.object({
   meal_type: z.string().min(1, "Meal type is required"),
   available_till: z.string().min(1, "Available till time is required"),
   description: z.string().min(1, "Description is required"),
-  photo_url: z.string().url("Please enter a valid URL").or(z.literal("")).optional(),
+  photo_url: z.string().url("Please select a photo before submitting"),
   spicy_level: z.enum(["sweet", "mild", "spicy"], {
     errorMap: () => ({ message: "Select spicy level" }),
   }),
@@ -68,7 +71,7 @@ export default function AddMenuItem({ hotelId, onSuccess }: AddMenuItemProps) {
   const [croppedPreviewUrl, setCroppedPreviewUrl] = useState<string | null>(null);
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
 
 
   const handlePhotoUrlChange = (url: string) => {
@@ -123,29 +126,29 @@ export default function AddMenuItem({ hotelId, onSuccess }: AddMenuItemProps) {
     setIsSubmitting(true); // <-- immediately disable the button
     try {
       const isLocalPreview = data.photo_url?.startsWith("blob:");
-  
+
       if ((isLocalPreview || !data.photo_url) && croppedImageBlob) {
         setIsUploading(true);
         const formData = new FormData();
         formData.append("file", croppedImageBlob);
         formData.append("upload_preset", "menu_preset");
         formData.append("folder", "menu-photos");
-  
+
         const uploadRes = await fetch("https://api.cloudinary.com/v1_1/dxnwguqtd/image/upload", {
           method: "POST",
           body: formData,
         });
-  
+
         if (!uploadRes.ok) throw new Error("Image upload failed");
-  
+
         const uploadData = await uploadRes.json();
         data.photo_url = uploadData.secure_url;
       }
-  
+
       if (!data.photo_url) {
         data.photo_url = "https://placehold.co/600x400/orange/white?text=Menu+Item";
       }
-  
+
       mutation.mutate(data);
     } catch (err) {
       console.error("Submission error:", err);
@@ -155,14 +158,275 @@ export default function AddMenuItem({ hotelId, onSuccess }: AddMenuItemProps) {
     }
   };
 
-  
-  
+
+
 
 
   const [isUploading, setIsUploading] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [dishNameForSearch, setDishNameForSearch] = useState("");
   const [croppedImageBlob, setCroppedImageBlob] = useState<Blob | null>(null);
+
+  const [query, setQuery] = useState("")
+  const [open, setOpen] = useState(false)
+
+  const menuItems = [
+    'Paneer Tikka',
+    'Hara Bhara Kabab',
+    'Veg Cutlet',
+    'Spring Roll',
+    'Stuffed Mushrooms',
+    'Chicken Tikka',
+    'Chicken Malai Tikka',
+    'Fish Tikka',
+    'Mutton Seekh Kebab',
+    'Chilli Paneer Dry',
+    'Chilli Chicken',
+    'Gobi Manchurian',
+    'French Fries',
+    'Nachos With Cheese',
+    'Tomato Soup',
+    'Sweet Corn Soup',
+    'Hot And Sour Veg Soup',
+    'Manchow Soup',
+    'Clear Soup',
+    'Chicken Sweet Corn Soup',
+    'Chicken Hot And Sour Soup',
+    'Mutton Soup',
+    'Rasam',
+    'Green Salad',
+    'Cucumber Salad',
+    'Onion Salad',
+    'Kachumber Salad',
+    'Russian Salad',
+    'Veg Caesar Salad',
+    'Chicken Caesar Salad',
+    'Sprouts Salad',
+    'Paneer Butter Masala',
+    'Kadai Paneer',
+    'Shahi Paneer',
+    'Palak Paneer',
+    'Dal Makhani',
+    'Dal Tadka',
+    'Chole Masala',
+    'Rajma Masala',
+    'Bhindi Masala',
+    'Baingan Bharta',
+    'Mix Veg Curry',
+    'Butter Chicken',
+    'Chicken Korma',
+    'Chicken Do Pyaza',
+    'Chicken Chettinad',
+    'Egg Curry',
+    'Fish Curry',
+    'Prawn Curry',
+    'Paneer Lababdar',
+    'Paneer Pasanda',
+    'Malai Kofta',
+    'Aloo Gobi',
+    'Mutter Paneer',
+    'Chicken Tikka Masala',
+    'Chicken Handi',
+    'Hyderabadi Mutton Curry',
+    'Goan Fish Curry',
+    'Prawn Masala Curry',
+    'Tandoori Roti',
+    'Butter Roti',
+    'Plain Naan',
+    'Butter Naan',
+    'Garlic Naan',
+    'Lachha Paratha',
+    'Aloo Paratha',
+    'Paneer Paratha',
+    'Amritsari Kulcha',
+    'Roomali Roti',
+    'Poori',
+    'Chapati',
+    'Steamed Rice',
+    'Jeera Rice',
+    'Veg Pulao',
+    'Peas Pulao',
+    'Veg Biryani',
+    'Chicken Biryani',
+    'Mutton Biryani',
+    'Hyderabadi Dum Biryani',
+    'Egg Biryani',
+    'Fish Biryani',
+    'Curd Rice',
+    'Lemon Rice',
+    'Tamarind Rice',
+    'Veg Fried Rice',
+    'Chicken Fried Rice',
+    'Egg Fried Rice',
+    'Veg Hakka Noodles',
+    'Schezwan Veg Noodles',
+    'Chicken Hakka Noodles',
+    'Schezwan Chicken Noodles',
+    'Egg Noodles',
+    'Singapore Noodles',
+    'American Chopsuey',
+    'Soya Chaap Tikka',
+    'Tandoori Chicken',
+    'Chicken Seekh Kebab',
+    'Reshmi Kebab',
+    'Afghani Chicken',
+    'Prawns Tandoori',
+    'Margherita Pizza',
+    'Farmhouse Pizza',
+    'Paneer Tikka Pizza',
+    'Veggie Delight Pizza',
+    'Chicken Tikka Pizza',
+    'Bbq Chicken Pizza',
+    'Pepperoni Pizza',
+    'Veg Burger',
+    'Paneer Burger',
+    'Aloo Tikki Burger',
+    'Chicken Burger',
+    'Double Cheese Chicken Burger',
+    'Fish Burger',
+    'Fish Fry',
+    'Prawn Fry',
+    'Crab Curry',
+    'Lobster Masala',
+    'Gulab Jamun',
+    'Rasgulla',
+    'Rasmalai',
+    'Jalebi',
+    'Kheer',
+    'Phirni',
+    'Gajar Halwa',
+    'Moong Dal Halwa',
+    'Ice Cream Vanilla',
+    'Ice Cream Chocolate',
+    'Ice Cream Butterscotch',
+    'Kulfi Malai',
+    'Kulfi Pista',
+    'Kulfi Mango',
+    'Brownie With Ice Cream',
+    'Cheesecake',
+    'Pastries',
+    'Fresh Lime Soda',
+    'Cold Drink',
+    'Orange Juices',
+    'Pineapple Juices',
+    'Watermelon Juices',
+    'Mosambi Juices',
+    'Lassi Sweet',
+    'Lassi Salted',
+    'Lassi Mango',
+    'Buttermilk Chaas',
+    'Jaljeera',
+    'Virgin Mojito',
+    'Blue Lagoon',
+    'Chocolate Milkshakes',
+    'Strawberry Milkshakes',
+    'Banana Milkshakes',
+    'Filter Coffee',
+    'Espresso',
+    'Cappuccino',
+    'Latte',
+    'Cold Coffee',
+    'Mocha',
+    'Tea',
+    'Papad Roasted',
+    'Papad Fried',
+    'Papad Masala',
+    'Pickles',
+    'Boondi Raita',
+    'Onion Raita',
+    'Cucumber Raita',
+    'Pineapple Raita',
+    'Masala Fries',
+    'Garlic Bread',
+    'Cheese Garlic Bread',
+    'Veg Thali',
+    'Special Thali',
+    'Non Veg Thali',
+    'Idli',
+    'Plain Dosa',
+    'Masala Dosa',
+    'Rava Dosa',
+    'Mysore Dosa',
+    'Uttapam',
+    'Vada',
+    'Vada Pav',
+    'Pav Bhaji',
+    'Pani Puri',
+    'Bhel Puri',
+    'Sev Puri',
+    'Dahi Puri',
+    'Veg Sandwich',
+    'Club Sandwich',
+    'Grilled Sandwich',
+    'Chicken Sandwich'
+  ]
+
+
+  // const filteredItems = menuItems.filter((item) =>
+  //   item.toLowerCase().includes(query.toLowerCase())
+  // )
+
+
+/* inside component: menuItems already defined */
+
+const fuseFuzzy = useMemo(
+  () =>
+    new Fuse(menuItems, {
+      threshold: 0.35,       // fuzzy tolerance for typos
+      ignoreLocation: true,
+      distance: 100,
+      includeScore: true,
+      useExtendedSearch: false,
+    }),
+  [menuItems]
+);
+
+const fuseTokens = useMemo(
+  () =>
+    new Fuse(menuItems, {
+      threshold: 0.4,        // token/word matching tolerance
+      ignoreLocation: true,
+      distance: 100,
+      includeScore: true,
+      useExtendedSearch: true,
+    }),
+  [menuItems]
+);
+
+const filteredItems = useMemo(() => {
+  const q = query.trim();
+  if (!q) return menuItems;
+
+  // 1) fuzzy results (good for misspellings)
+  const fuzzy = fuseFuzzy.search(q).map(r => r.item);
+
+  // 2) if multi-word, do token/extended search (good for different word order)
+  const words = q.split(/\s+/).filter(Boolean);
+  if (words.length <= 1) {
+    // single word: return fuzzy (best for typos)
+    return fuzzy;
+  }
+
+  // multi-word: build extended query safely (no empty tokens)
+  const extQuery = words.map(w => `'${w}`).join(" ");
+
+  let tokenResults: string[] = [];
+  try {
+    tokenResults = fuseTokens.search(extQuery).map(r => r.item);
+  } catch {
+    tokenResults = [];
+  }
+
+  // 3) merge: tokenResults first, then fuzzy results not included already
+  const merged: string[] = [];
+  tokenResults.forEach(i => merged.push(i));
+  fuzzy.forEach(i => {
+    if (!merged.includes(i)) merged.push(i);
+  });
+
+  // fallback to fuzzy if tokenResults empty
+  return merged.length > 0 ? merged : fuzzy;
+}, [query, menuItems, fuseFuzzy, fuseTokens]);
 
 
 
@@ -171,10 +435,10 @@ export default function AddMenuItem({ hotelId, onSuccess }: AddMenuItemProps) {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-  
+
     try {
       let finalFile = file;
-  
+
       if (file.size > 200 * 1024) {
         const options = {
           maxSizeMB: 0.2,
@@ -187,7 +451,7 @@ export default function AddMenuItem({ hotelId, onSuccess }: AddMenuItemProps) {
           lastModified: Date.now(),
         });
       }
-  
+
       setSelectedImage(finalFile);      // Will be passed to cropper
       setShowCropper(true);             // Open crop modal
     } catch (err) {
@@ -195,23 +459,23 @@ export default function AddMenuItem({ hotelId, onSuccess }: AddMenuItemProps) {
       alert("Image compression failed");
     }
   };
-  
-  
-  
+
+
+
 
 
   const handleCropConfirm = async () => {
     if (!selectedImage || !croppedAreaPixels) return;
-  
+
     const blob = await getCroppedImg(
       URL.createObjectURL(selectedImage),
       croppedAreaPixels
     );
-  
+
     setCroppedImageBlob(blob);
-  
+
     const previewUrl = URL.createObjectURL(blob);
-  
+
     // Replace last image if 3 already exist
     setDishImages((prev) => {
       if (prev.length >= 3) {
@@ -222,15 +486,15 @@ export default function AddMenuItem({ hotelId, onSuccess }: AddMenuItemProps) {
         return [...prev, { secure_url: previewUrl }];
       }
     });
-  
+
     setPhotoUrl(previewUrl);
     form.setValue("photo_url", previewUrl);
-  
+
     setShowCropper(false);
   };
-  
-  
-  
+
+
+  const justSelectedRef = useRef(false);
 
   const [dishImages, setDishImages] = useState<{ secure_url: string }[]>([]);
 
@@ -244,6 +508,7 @@ export default function AddMenuItem({ hotelId, onSuccess }: AddMenuItemProps) {
 
 
     try {
+      setDishImages([]);
       const res = await axios.post("/api/search-image", { query: name });
       const images = res.data?.resources || [];
       setDishImages(images);
@@ -279,6 +544,17 @@ export default function AddMenuItem({ hotelId, onSuccess }: AddMenuItemProps) {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <div className="grid grid-cols-1 sm:grid-cols-6 gap-6">
+
+
+
+
+
+
+
+
+
+
+
               <FormField
                 control={form.control}
                 name="name"
@@ -286,17 +562,88 @@ export default function AddMenuItem({ hotelId, onSuccess }: AddMenuItemProps) {
                   <FormItem className="sm:col-span-3">
                     <FormLabel>Dish Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Chicken Curry" {...field}
-                        onBlur={(e) => {
-                          field.onBlur(); // keep react-hook-form behavior
-                          handleDishNameBlur(e.target.value); // trigger image search
-                        }}
-                      />
+                      <div className="relative">
+                        <Command shouldFilter={false}>
+                          <CommandInput
+                            placeholder="Chicken Curry"
+                            value={field.value}
+                            onValueChange={(val) => {
+                              field.onChange(val);
+                              setQuery(val);
+                              setOpen(val.length > 0);
+                            }}
+                            onBlur={(e) => {
+                              field.onBlur();
+
+                              // Give onSelect/onMouseDown a short window to set the "justSelected" flag.
+                              // If a selection occurred, onSelect will run and set the flag so we won't call the API twice.
+                              setTimeout(() => {
+                                setOpen(false);
+                                if (!justSelectedRef.current) {
+                                  // no selection happened → do free-text search
+                                  handleDishNameBlur(e.target.value);
+                                }
+                                // reset flag for next interaction
+                                justSelectedRef.current = false;
+                              }, 100); // 50-150ms is fine; 100ms is safe
+                            }}
+                          />
+                          {open && filteredItems.length > 0 && (
+                            <CommandList
+                              className="
+                  absolute left-0 right-0 
+                  top-full mt-1 
+                  z-10 rounded-md border bg-white shadow-lg
+                  max-h-60 overflow-auto
+                "
+                            >
+                              {filteredItems.map((item) => (
+                                <CommandItem
+                                  key={item}
+                                  // mouse down happens BEFORE input blur — mark intent to select
+                                  onMouseDown={() => {
+                                    justSelectedRef.current = true;
+                                  }}
+                                  onSelect={() => {
+                                    // ensure flag is true (covers keyboard selection too via this line)
+                                    justSelectedRef.current = true;
+
+                                    field.onChange(item);
+                                    setQuery(item);
+                                    setOpen(false);
+
+                                    // call once with the selected item
+                                    handleDishNameBlur(item);
+
+                                    // reset flag shortly after selection
+                                    setTimeout(() => {
+                                      justSelectedRef.current = false;
+                                    }, 100);
+                                  }}
+                                >
+                                  {item}
+                                </CommandItem>
+                              ))}
+                            </CommandList>
+                          )}
+                        </Command>
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
+
+
+
+
+
+
+
+
+
+
 
               <FormField
                 control={form.control}
@@ -329,25 +676,25 @@ export default function AddMenuItem({ hotelId, onSuccess }: AddMenuItemProps) {
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
                       </FormControl>
-<SelectContent>
-  <SelectItem value="starters">Starters</SelectItem>
-  <SelectItem value="soup">Soup</SelectItem>
-  <SelectItem value="salad">Salad</SelectItem>
-  <SelectItem value="mains">Mains</SelectItem>
-  <SelectItem value="curry">Curry</SelectItem>
-  <SelectItem value="bread">Bread</SelectItem>
-  <SelectItem value="rice">Rice</SelectItem>
-  <SelectItem value="noodles">Noodles</SelectItem>
-  <SelectItem value="bbq">BBQ</SelectItem>
-  <SelectItem value="pizza">Pizza</SelectItem>
-  <SelectItem value="burger">Burger</SelectItem>
-  <SelectItem value="seafood">Seafood</SelectItem>
-  <SelectItem value="desserts">Desserts</SelectItem>
-  <SelectItem value="drinks">Drinks</SelectItem>
-  <SelectItem value="coffee">Coffee</SelectItem>
-  <SelectItem value="sides">Sides</SelectItem>
-  <SelectItem value="other">Other</SelectItem>
-</SelectContent>
+                      <SelectContent>
+                        <SelectItem value="starters">Starters</SelectItem>
+                        <SelectItem value="soup">Soup</SelectItem>
+                        <SelectItem value="salad">Salad</SelectItem>
+                        <SelectItem value="mains">Mains</SelectItem>
+                        <SelectItem value="curry">Curry</SelectItem>
+                        <SelectItem value="bread">Bread</SelectItem>
+                        <SelectItem value="rice">Rice</SelectItem>
+                        <SelectItem value="noodles">Noodles</SelectItem>
+                        <SelectItem value="bbq">BBQ</SelectItem>
+                        <SelectItem value="pizza">Pizza</SelectItem>
+                        <SelectItem value="burger">Burger</SelectItem>
+                        <SelectItem value="seafood">Seafood</SelectItem>
+                        <SelectItem value="desserts">Desserts</SelectItem>
+                        <SelectItem value="drinks">Drinks</SelectItem>
+                        <SelectItem value="coffee">Coffee</SelectItem>
+                        <SelectItem value="sides">Sides</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
                     </Select>
                     <FormMessage />
                   </FormItem>
@@ -453,7 +800,19 @@ export default function AddMenuItem({ hotelId, onSuccess }: AddMenuItemProps) {
 
 
                   {/* Hidden input to submit in form if needed */}
-                  <input type="hidden" name="photo_url" value={photoUrl ?? ""} />
+<FormField
+  control={form.control}
+  name="photo_url"
+  render={({ field }) => (
+    <FormItem className="sm:col-span-6">
+      <FormControl>
+        {/* Keep your hidden input */}
+        <input type="hidden" {...field} value={photoUrl ?? ""} />
+      </FormControl>
+      <FormMessage /> {/* <-- this will show the validation error */}
+    </FormItem>
+  )}
+/>
                 </div>
 
 
@@ -608,12 +967,12 @@ export default function AddMenuItem({ hotelId, onSuccess }: AddMenuItemProps) {
 
 
                 <button
-  onClick={handleCropConfirm}
-  className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-  disabled={isUploading}
->
-  Confirm
-</button>
+                  onClick={handleCropConfirm}
+                  className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isUploading}
+                >
+                  Confirm
+                </button>
 
 
               </div>
