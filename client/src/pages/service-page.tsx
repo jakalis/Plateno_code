@@ -24,7 +24,7 @@ export default function ServicePage() {
             }
 
             try {
-                const response = await fetch(`/api/hotels/${hotelId}/Service`);
+                const response = await fetch(`${import.meta.env.VITE_API_URL}/api/hotels/${hotelId}/Service`);
                 if (!response.ok) {
                     throw new Error("Failed to fetch Service details");
                 }

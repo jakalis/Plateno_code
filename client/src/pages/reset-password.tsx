@@ -28,7 +28,7 @@ export default function ResetPasswordPage() {
   const form = useForm({ resolver: zodResolver(schema) });
 
   const onSubmit = async (data: any) => {
-    const res = await fetch(`/api/reset-password/${token}`, {
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/reset-password/${token}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password: data.password }),

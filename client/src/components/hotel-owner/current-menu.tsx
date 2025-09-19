@@ -127,10 +127,12 @@ export default function CurrentMenu({ hotelId }: CurrentMenuProps) {
     });
   };
 
+  const apiUrl = import.meta.env.VITE_API_URL;
+
   const handleUpdate = async () => {
     if (!activeItem) return;
 
-    const res = await fetch("/api/menu-update-requests", {
+    const res = await fetch(`${apiUrl}/api/menu-update-requests`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -163,7 +165,9 @@ export default function CurrentMenu({ hotelId }: CurrentMenuProps) {
     const confirmDelete = confirm("Are you sure you want to delete this item?");
     if (!confirmDelete) return;
 
-    const res = await fetch(`/api/menu-items/${activeItem.id}`, {
+    const apiUrl = import.meta.env.VITE_API_URL;
+
+    const res = await fetch(`${apiUrl}/api/menu-items/${activeItem.id}`, {
       method: "DELETE",
     });
 

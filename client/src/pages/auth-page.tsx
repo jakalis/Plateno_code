@@ -135,8 +135,10 @@ export default function AuthPage() {
 
     setIsForgotLoading(true);
 
+    const apiUrl = import.meta.env.VITE_API_URL;
+
     try {
-      const res = await fetch("/api/forgot-password", {
+      const res = await fetch(`${apiUrl}/api/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),

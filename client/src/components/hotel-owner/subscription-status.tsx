@@ -76,7 +76,7 @@ export default function SubscriptionStatus({
             };
 
             // Call our verify-payment API
-            const verifyRes = await fetch('/api/verify-payment', {
+            const verifyRes = await fetch(`${import.meta.env.VITE_API_URL}/api/verify-payment`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(verificationData)

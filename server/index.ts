@@ -2,9 +2,22 @@ import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import cors from "cors";
+
+// Allow your Vercel frontend domain and local development
+const allowedOrigins = [
+  "https://plateno-code-o787vdy8k-jakalis-projects.vercel.app/", // replace with your actual Vercel URL
+  "http://localhost:5173" // Vite dev server (optional, for local dev)
+];
 
 const app = express();
 app.use(express.json());
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
+
+
 app.use(express.urlencoded({ extended: false }));
 
 app.use((req, res, next) => {
