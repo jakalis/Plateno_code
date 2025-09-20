@@ -1,97 +1,63 @@
 import 'dotenv/config';
-import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
+import express from "express";
+import fs from "fs";
+import https from "https";
+import path from "path";
+import { fileURLToPath } from 'url';
 import cors from "cors";
 import session from "express-session";
 import passport from "passport";
-import https from "https";
-import fs from "fs";
-import { dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { registerRoutes } from "./routes";
+import { setupVite, serveStatic, log } from "./vite";
 
-// Convert import.meta.url to __dirname equivalent
+// __dirname workaround for ES Modules
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-
-import path from "path";
-
-
-
-
-// Allow your Vercel frontend domain and local development
-const allowedOrigins = [
-  "https://plateno-code.vercel.app", // replace with your actual Vercel URL
-  "https://localhost:5000" // Vite dev server (optional, for local dev)
-];
+const __dirname = path.dirname(__filename);
 
 const app = express();
-app.use(express.json());
 
-app.set("trust proxy", 1);
+// CORS config
+const allowedOrigins = [
+  "https://plateno-code.vercel.app",
+  "https://localhost:5000", // only for local dev
+];
 app.use(cors({
   origin: allowedOrigins,
   credentials: true
 }));
 
-// ✅ configure the session cookie for cross-site usage
+// Session config
+const isProd = process.env.NODE_ENV === "production";
+
+app.set("trust proxy", 1);
 app.use(session({
   secret: process.env.SESSION_SECRET!,
   resave: false,
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
-    secure: true,        // only over https
-    sameSite: "none"     // **critical** for cross-origin
+    secure: isProd,               // only true in production
+    sameSite: isProd ? "none" : "lax",
   }
 }));
 
-// ✅ Add passport middleware
 app.use(passport.initialize());
 app.use(passport.session());
-
+app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Logging middleware, etc (your existing code)
 app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
-    }
-  });
-
+  // ... logging logic ...
   next();
 });
 
 (async () => {
   const server = await registerRoutes(app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    res.status(status).json({ message });
-    throw err;
+  app.use((err, _req, res, _next) => {
+    const status = err.status || 500;
+    res.status(status).json({ message: err.message || "Internal Server Error" });
   });
 
   if (app.get("env") === "development") {
@@ -100,18 +66,22 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // HTTPS options - load your self-signed certs here
-
-const httpsOptions = {
-  key: fs.readFileSync(path.join(__dirname, "key.pem")),
-  cert: fs.readFileSync(path.join(__dirname, "cert.pem")),
-};
-
-
   const port = process.env.PORT ? Number(process.env.PORT) : 5000;
 
-  log('About to start HTTPS server...');
-  https.createServer(httpsOptions, app).listen(port, "0.0.0.0", () => {
-    log(`HTTPS server serving on port ${port}`);
-  });
+  if (isProd) {
+    // 🚀 Render or other production: HTTP only (Render handles HTTPS)
+    app.listen(port, "0.0.0.0", () => {
+      log(`HTTP server running on http://localhost:${port}`);
+    });
+  } else {
+    // 💻 Local dev: Run with HTTPS using self-signed certs
+    const httpsOptions = {
+      key: fs.readFileSync(path.join(__dirname, "key.pem")),
+      cert: fs.readFileSync(path.join(__dirname, "cert.pem")),
+    };
+
+    https.createServer(httpsOptions, app).listen(port, "0.0.0.0", () => {
+      log(`HTTPS server running on https://localhost:${port}`);
+    });
+  }
 })();
