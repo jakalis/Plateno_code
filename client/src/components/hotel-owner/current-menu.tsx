@@ -47,7 +47,7 @@ export default function CurrentMenu({ hotelId }: CurrentMenuProps) {
     error,
     refetch,
   } = useQuery<MenuItem[]>({
-    queryKey: [`/api/hotels/${hotelId}/menu-items`],
+    queryKey: [`${import.meta.env.VITE_API_URL}/api/hotels/${hotelId}/menu-items`],
   });
 
   useEffect(() => {

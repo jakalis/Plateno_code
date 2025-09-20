@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 export default function ContactPage() {
     const { hotelId } = useParams();
           const { data: hotel, isLoading: hotelLoading, error: hotelError } = useQuery<Hotel>({
-        queryKey: [`/api/hotels/${hotelId}`],
+        queryKey: [`${import.meta.env.VITE_API_URL}/api/hotels/${hotelId}`],
       });
     const [contact, setContact] = useState<null | Record<string, string>>(null);
     const [loading, setLoading] = useState(true);
@@ -24,7 +24,7 @@ export default function ContactPage() {
             }
 
             try {
-                const response = await fetch(`/api/hotels/${hotelId}/contact`);
+                const response = await fetch(`${import.meta.env.VITE_API_URL}/api/hotels/${hotelId}/contact`);
                 if (!response.ok) {
                     throw new Error("Failed to fetch contact details");
                 }

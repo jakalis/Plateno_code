@@ -7,7 +7,7 @@ import { Hotel } from "@shared/schema";
 export default function ServicePage() {
     const { hotelId } = useParams();
       const { data: hotel, isLoading: hotelLoading, error: hotelError } = useQuery<Hotel>({
-        queryKey: [`/api/hotels/${hotelId}`],
+        queryKey: [`${import.meta.env.VITE_API_URL}/api/hotels/${hotelId}`],
       });
     const [service, setService] = useState<null | Record<string, string>>(null);
     const [loading, setLoading] = useState(true);

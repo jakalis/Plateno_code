@@ -36,7 +36,7 @@ export default function Payment() {
   const safeType = validType in planDetails ? validType : "monthly";
   
   const { data: razorpayConfig, isLoading: isLoadingConfig } = useQuery<RazorpayConfig>({
-    queryKey: ['/api/razorpay-config'],
+    queryKey: [`${import.meta.env.VITE_API_URL}/api/razorpay-config`],
   });
 
   // Load Razorpay script dynamically
@@ -201,7 +201,7 @@ export default function Payment() {
       console.log("Verifying payment:", verificationData);
 
       // Send verification request
-      const res = await apiRequest("POST", "/api/verify-payment", verificationData);
+      const res = await apiRequest("POST", `${import.meta.env.VITE_API_URL}/api/verify-payment`, verificationData);
       const data = await res.json();
       
       if (data.success) {

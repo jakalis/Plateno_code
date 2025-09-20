@@ -98,7 +98,7 @@ export default function AddMenuItem({ hotelId, onSuccess }: AddMenuItemProps) {
 
   const mutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      return apiRequest("POST", "/api/menu-update-requests", {
+      return apiRequest("POST", `${import.meta.env.VITE_API_URL}/api/menu-update-requests`, {
         requested_changes: data,
         hotel_id: hotelId,
       });
@@ -509,7 +509,7 @@ const filteredItems = useMemo(() => {
 
     try {
       setDishImages([]);
-      const res = await axios.post("/api/search-image", { query: name });
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/search-image`, { query: name });
       const images = res.data?.resources || [];
       setDishImages(images);
 

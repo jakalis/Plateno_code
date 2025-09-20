@@ -26,7 +26,7 @@ export default function MenuRequests() {
     error: requestsError,
     refetch,
   } = useQuery<MenuUpdateRequest[]>({
-    queryKey: ["/api/menu-update-requests"],
+    queryKey: [`${import.meta.env.VITE_API_URL}/api/menu-update-requests`],
   });
 
   // Fetch all hotels
@@ -35,7 +35,7 @@ export default function MenuRequests() {
     isLoading: hotelsLoading,
     error: hotelsError,
   } = useQuery<Hotel[]>({
-    queryKey: ["/api/hotels"],
+    queryKey: [`${import.meta.env.VITE_API_URL}/api/hotels`],
   });
 
   const isLoading = requestsLoading || hotelsLoading;
@@ -44,7 +44,7 @@ export default function MenuRequests() {
   // Handle approving a request
   const approveMutation = useMutation({
     mutationFn: async (requestId: string) => {
-      return apiRequest("PATCH", `/api/menu-update-requests/${requestId}`, {
+      return apiRequest("PATCH", `${import.meta.env.VITE_API_URL}/api/menu-update-requests/${requestId}`, {
         status: "approved",
       });
     },
@@ -57,14 +57,14 @@ export default function MenuRequests() {
       // Refresh all relevant queries
       Promise.all([
         queryClient.invalidateQueries({
-          queryKey: ["/api/menu-update-requests"],
+          queryKey: [`${import.meta.env.VITE_API_URL}/api/menu-update-requests`],
         }),
-        queryClient.invalidateQueries({ queryKey: ["/api/menu-items"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/hotels"] }),
+        queryClient.invalidateQueries({ queryKey: [`${import.meta.env.VITE_API_URL}/api/menu-items`] }),
+        queryClient.invalidateQueries({ queryKey: [`${import.meta.env.VITE_API_URL}/api/hotels`] }),
       ]).then(() => {
         // Force refetch
-        queryClient.refetchQueries({ queryKey: ["/api/menu-update-requests"] });
-        queryClient.refetchQueries({ queryKey: ["/api/menu-items"] });
+        queryClient.refetchQueries({ queryKey: [`${import.meta.env.VITE_API_URL}/api/menu-update-requests`] });
+        queryClient.refetchQueries({ queryKey: [`${import.meta.env.VITE_API_URL}/api/menu-items`] });
       });
 
       refetch();
@@ -81,7 +81,7 @@ export default function MenuRequests() {
   // Handle rejecting a request
   const rejectMutation = useMutation({
     mutationFn: async (requestId: string) => {
-      return apiRequest("PATCH", `/api/menu-update-requests/${requestId}`, {
+      return apiRequest("PATCH", `${import.meta.env.VITE_API_URL}/api/menu-update-requests/${requestId}`, {
         status: "rejected",
       });
     },
@@ -91,7 +91,7 @@ export default function MenuRequests() {
         description: "The menu item request has been rejected",
       });
       queryClient.invalidateQueries({
-        queryKey: ["/api/menu-update-requests"],
+        queryKey: [`${import.meta.env.VITE_API_URL}/api/menu-update-requests`],
       });
     },
     onError: (error) => {

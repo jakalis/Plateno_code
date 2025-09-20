@@ -70,7 +70,7 @@ export default function EditMenuItemRequest({
 
   const mutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      return apiRequest("POST", "/api/menu-update-requests", {
+      return apiRequest("POST", `${import.meta.env.VITE_API_URL}/api/menu-update-requests`, {
         requested_changes: data,
         hotel_id: hotelId,
         menu_item_id: itemId,

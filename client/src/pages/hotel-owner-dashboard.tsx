@@ -51,7 +51,7 @@ export default function HotelOwnerDashboard() {
   const [activeTab, setActiveTab] = useState<null | string>(null);
 
   const { data: hotel, isLoading, error } = useQuery<Hotel>({
-    queryKey: ['/api/my-hotel'],
+    queryKey: [`${import.meta.env.VITE_API_URL}/api/my-hotel`],
   });
 
   if (!user || user.role !== "hotel_owner") {
@@ -78,12 +78,12 @@ export default function HotelOwnerDashboard() {
   const remainingText = duration ? `${formatDuration(duration)} left` : "Unknown";
 
   const { data: activeSubscription, isLoading: isLoadingSubscription, refetch: refetchSubscription } = useQuery<{ subscription: Subscription | null }>({
-    queryKey: [hotelId ? `/api/subscription/active/${hotelId}` : null],
+    queryKey: [hotelId ? `${import.meta.env.VITE_API_URL}/api/subscription/active/${hotelId}` : null],
     enabled: !!hotelId,
   });
 
   const { data: subscriptionHistory, isLoading: isLoadingHistory, refetch: refetchHistory } = useQuery<Subscription[]>({
-    queryKey: [hotelId ? `/api/subscriptions/${hotelId}` : null],
+    queryKey: [hotelId ? `${import.meta.env.VITE_API_URL}/api/subscriptions/${hotelId}` : null],
     enabled: !!hotelId,
   });
 

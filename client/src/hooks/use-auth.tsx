@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     error,
     isLoading,
   } = useQuery<User | null>({
-    queryKey: ["/api/user"],
+    queryKey: [`${import.meta.env.VITE_API_URL}/api/user`],
     retry: false,
     staleTime: Infinity,
     // Don't show not authenticated as an error
@@ -54,11 +54,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useMutation<User, Error, LoginData>({
     mutationFn: async (credentials) => {
-      const res = await apiRequest("POST", "/api/login", credentials);
+      const res = await apiRequest("POST", `${import.meta.env.VITE_API_URL}/api/login`, credentials);
       return await res.json();
     },
     onSuccess: (user) => {
-      queryClient.setQueryData(["/api/user"], user);
+      queryClient.setQueryData([`${import.meta.env.VITE_API_URL}/api/user`], user);
       toast({
         title: "Logged in successfully",
         description: `Welcome ${user.email}!`,
@@ -82,11 +82,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const registerMutation = useMutation<User, Error, RegisterData>({
     mutationFn: async (data) => {
-      const res = await apiRequest("POST", "/api/register", data);
+      const res = await apiRequest("POST", `${import.meta.env.VITE_API_URL}/api/register`, data);
       return await res.json();
     },
     onSuccess: (user) => {
-      queryClient.setQueryData(["/api/user"], user);
+      queryClient.setQueryData([`${import.meta.env.VITE_API_URL}/api/user`], user);
       toast({
         title: "Registered successfully",
         description: `Welcome ${user.email}!`,
@@ -106,10 +106,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logoutMutation = useMutation<void, Error, void>({
     mutationFn: async () => {
-      await apiRequest("POST", "/api/logout");
+      await apiRequest("POST", `${import.meta.env.VITE_API_URL}/api/logout`);
     },
     onSuccess: () => {
-      queryClient.setQueryData(["/api/user"], null);
+      queryClient.setQueryData([`${import.meta.env.VITE_API_URL}/api/user`], null);
       toast({
         title: "Logged out successfully",
       });

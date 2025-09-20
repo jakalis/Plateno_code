@@ -48,20 +48,20 @@ export default function HotelManagement() {
 
   // Fetch all hotels
   const { data: hotels, isLoading, error } = useQuery<Hotel[]>({
-    queryKey: ['/api/hotels'],
+    queryKey: [`${import.meta.env.VITE_API_URL}/api/hotels`],
   });
 
   // Create new hotel
   const createMutation = useMutation({
     mutationFn: async (data: HotelFormValues) => {
-      return apiRequest("POST", `/api/hotels`, data);
+      return apiRequest("POST", `${import.meta.env.VITE_API_URL}/api/hotels`, data);
     },
     onSuccess: () => {
       toast({
         title: "Hotel created",
         description: "The hotel has been created successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/hotels'] });
+      queryClient.invalidateQueries({ queryKey: [`${import.meta.env.VITE_API_URL}/api/hotels`] });
       setIsDialogOpen(false);
       form.reset();
     },
@@ -77,14 +77,14 @@ export default function HotelManagement() {
   // Update hotel
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string, data: Partial<HotelFormValues> }) => {
-      return apiRequest("PATCH", `/api/hotels/${id}`, data);
+      return apiRequest("PATCH", `${import.meta.env.VITE_API_URL}/api/hotels/${id}`, data);
     },
     onSuccess: () => {
       toast({
         title: "Hotel updated",
         description: "The hotel has been updated successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/hotels'] });
+      queryClient.invalidateQueries({ queryKey: [`${import.meta.env.VITE_API_URL}/api/hotels`] });
       setIsDialogOpen(false);
       form.reset();
     },
@@ -100,14 +100,14 @@ export default function HotelManagement() {
   // Toggle hotel status (active/inactive)
   const toggleStatusMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: string, isActive: boolean }) => {
-      return apiRequest("PATCH", `/api/hotels/${id}`, { is_active: isActive });
+      return apiRequest("PATCH", `${import.meta.env.VITE_API_URL}/api/hotels/${id}`, { is_active: isActive });
     },
     onSuccess: (_, variables) => {
       toast({
         title: `Hotel ${variables.isActive ? 'activated' : 'deactivated'}`,
         description: `The hotel has been ${variables.isActive ? 'activated' : 'deactivated'} successfully`,
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/hotels'] });
+      queryClient.invalidateQueries({ queryKey: [`${import.meta.env.VITE_API_URL}/api/hotels`] });
     },
     onError: (error) => {
       toast({

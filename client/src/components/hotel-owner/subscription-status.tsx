@@ -37,7 +37,7 @@ export default function SubscriptionStatus({
   const handleCreatePayment = async () => {
     try {
       console.log(`Creating payment for ${selectedPlan} plan`);
-      const res = await apiRequest("POST", "/api/create-payment", {
+      const res = await apiRequest("POST", `${import.meta.env.VITE_API_URL}/api/create-payment`, {
         type: selectedPlan,
         hotelOwnerId: hotelOwner.id,
       });

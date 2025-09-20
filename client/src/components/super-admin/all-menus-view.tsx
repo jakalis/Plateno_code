@@ -19,12 +19,12 @@ export default function AllMenusView() {
 
   // Fetch all hotels
   const { data: hotels, isLoading: hotelsLoading } = useQuery<Hotel[]>({
-    queryKey: ["/api/hotels"],
+    queryKey: [`${import.meta.env.VITE_API_URL}/api/hotels`],
   });
 
   // Fetch all menu items
   const { data: allMenuItems, isLoading: menuItemsLoading, error } = useQuery<MenuItem[]>({
-    queryKey: ["/api/menu-items"],
+    queryKey: [`${import.meta.env.VITE_API_URL}/api/menu-items`],
   });
 
   const isLoading = hotelsLoading || menuItemsLoading;

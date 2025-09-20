@@ -83,11 +83,11 @@ const categoryIcons: Record<string, JSX.Element> = {
   const { cart, addToCart, increaseQuantity, decreaseQuantity, removeFromCart } = useCart();
 
   const { data: hotel, isLoading: hotelLoading, error: hotelError } = useQuery<Hotel>({
-    queryKey: [`/api/hotels/${hotelId}`],
+    queryKey: [`${import.meta.env.VITE_API_URL}/api/hotels/${hotelId}`],
   });
 
   const { data: menuItems, isLoading: menuLoading, error: menuError } = useQuery<MenuItem[]>({
-    queryKey: [`/api/hotels/${hotelId}/menu-items`],
+    queryKey: [`${import.meta.env.VITE_API_URL}/api/hotels/${hotelId}/menu-items`],
     enabled: !!hotel && hotel.is_active,
   });
 

@@ -18,7 +18,7 @@ export default function PendingRequests({ hotelId }: PendingRequestsProps) {
     isLoading,
     error,
   } = useQuery<MenuUpdateRequest[]>({
-    queryKey: ["/api/menu-update-requests"],
+    queryKey: [`${import.meta.env.VITE_API_URL}/api/menu-update-requests`],
   });
 
   const hotelRequests = requests?.filter((req) => req.hotel_id === hotelId) || [];
