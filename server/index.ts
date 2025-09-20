@@ -6,7 +6,7 @@ import cors from "cors";
 
 // Allow your Vercel frontend domain and local development
 const allowedOrigins = [
-  "https://plateno-code-o787vdy8k-jakalis-projects.vercel.app/", // replace with your actual Vercel URL
+  "https://plateno-code.vercel.app", // replace with your actual Vercel URL
   "http://localhost:5173" // Vite dev server (optional, for local dev)
 ];
 
