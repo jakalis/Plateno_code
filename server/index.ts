@@ -3,20 +3,53 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import cors from "cors";
+import session from "express-session";
+import passport from "passport";
+import https from "https";
+import fs from "fs";
+import { dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+// Convert import.meta.url to __dirname equivalent
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+
+import path from "path";
+
+
+
 
 // Allow your Vercel frontend domain and local development
 const allowedOrigins = [
   "https://plateno-code.vercel.app", // replace with your actual Vercel URL
-  "http://localhost:5173" // Vite dev server (optional, for local dev)
+  "https://localhost:5000" // Vite dev server (optional, for local dev)
 ];
 
 const app = express();
 app.use(express.json());
+
+app.set("trust proxy", 1);
 app.use(cors({
   origin: allowedOrigins,
   credentials: true
 }));
 
+// ✅ configure the session cookie for cross-site usage
+app.use(session({
+  secret: process.env.SESSION_SECRET!,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: true,        // only over https
+    sameSite: "none"     // **critical** for cross-origin
+  }
+}));
+
+// ✅ Add passport middleware
+app.use(passport.initialize());
+app.use(passport.session());
 
 app.use(express.urlencoded({ extended: false }));
 
@@ -61,28 +94,24 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-const port = process.env.PORT ? Number(process.env.PORT) : 5000;
-// ...existing code...
-log('About to start server...');
-server.listen({
-  port,
-  host: "0.0.0.0",
-  reusePort: true,
-}, () => {
-  log(`serving on port ${port}`);
-});
-// ...existing code...
+  // HTTPS options - load your self-signed certs here
 
+const httpsOptions = {
+  key: fs.readFileSync(path.join(__dirname, "key.pem")),
+  cert: fs.readFileSync(path.join(__dirname, "cert.pem")),
+};
+
+
+  const port = process.env.PORT ? Number(process.env.PORT) : 5000;
+
+  log('About to start HTTPS server...');
+  https.createServer(httpsOptions, app).listen(port, "0.0.0.0", () => {
+    log(`HTTPS server serving on port ${port}`);
+  });
 })();

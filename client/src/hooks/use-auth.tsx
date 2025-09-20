@@ -35,55 +35,74 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
-  
+
+  // ✅ Use apiRequest to include credentials for cookies
   const {
     data: user,
     error,
     isLoading,
   } = useQuery<User | null>({
     queryKey: [`${import.meta.env.VITE_API_URL}/api/user`],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `${import.meta.env.VITE_API_URL}/api/user`);
+      return res.json();
+    },
     retry: false,
     staleTime: Infinity,
-    // Don't show not authenticated as an error
     refetchOnMount: false,
-    // We want to handle 401 gracefully
     throwOnError: false,
-    // Transform 401 responses to null user
     select: (data) => data || null
   });
 
-  const loginMutation = useMutation<User, Error, LoginData>({
-    mutationFn: async (credentials) => {
-      const res = await apiRequest("POST", `${import.meta.env.VITE_API_URL}/api/login`, credentials);
-      return await res.json();
-    },
-    onSuccess: (user) => {
-      queryClient.setQueryData([`${import.meta.env.VITE_API_URL}/api/user`], user);
-      toast({
-        title: "Logged in successfully",
-        description: `Welcome ${user.email}!`,
-      });
-      
-      // Redirect based on user role
-      if (user.role === "super_admin") {
-        window.location.href = "/admin";
-      } else if (user.role === "hotel_owner") {
-        window.location.href = "/";
-      }
-    },
-    onError: (error) => {
-      toast({
-        title: "Login failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+const loginMutation = useMutation<User, Error, LoginData>({
+  mutationFn: async (credentials) => {
+    // Login request with credentials included
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(credentials),
+      credentials: "include", // important for cookies/session
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message || "Login failed");
+    }
+
+    return res.json();
+  },
+  onSuccess: async (user) => {
+    // Update React Query cache
+    queryClient.setQueryData(["currentUser"], user);
+
+    console.log("Login successful:", user);
+
+    toast({
+      title: "Logged in successfully",
+      description: `Welcome ${user.email}!`,
+    });
+
+    // Redirect based on role
+    if (user.role === "super_admin") {
+      window.location.href = "/admin";
+    } else if (user.role === "hotel_owner") {
+      window.location.href = "/";
+    }
+  },
+  onError: (error: any) => {
+    toast({
+      title: "Login failed",
+      description: error.message || "Something went wrong",
+      variant: "destructive",
+    });
+  },
+});
+
 
   const registerMutation = useMutation<User, Error, RegisterData>({
     mutationFn: async (data) => {
       const res = await apiRequest("POST", `${import.meta.env.VITE_API_URL}/api/register`, data);
-      return await res.json();
+      return res.json();
     },
     onSuccess: (user) => {
       queryClient.setQueryData([`${import.meta.env.VITE_API_URL}/api/user`], user);
@@ -91,8 +110,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         title: "Registered successfully",
         description: `Welcome ${user.email}!`,
       });
-      
-      // Redirect based on user role - for registration it should always be hotel_owner
       window.location.href = "/";
     },
     onError: (error) => {
@@ -110,10 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: () => {
       queryClient.setQueryData([`${import.meta.env.VITE_API_URL}/api/user`], null);
-      toast({
-        title: "Logged out successfully",
-      });
-      // Force redirect to auth page
+      toast({ title: "Logged out successfully" });
       window.location.href = "/auth";
     },
     onError: (error) => {
